@@ -42,16 +42,16 @@ There are different actors involved in this work. All of them are represented by
 
 - users: they are addresses that mostly call the borrow and the deposit functions and query the Lending Pool in order to view its state.
 
-**_Borrow and deposit actions_**
+### Borrow and deposit functions
 The borrow and deposit functions are summarized by the follow pseudocodes.
 
 ```
-borrow (reserve, amountToBorrow){
+borrow (address reserve, uint256 amountToBorrow){
 	require(amountToBorrow > 0)
 	require(LiquidityOfLendingPool >= amountToBorrow)
 	Compute User Data //(total liquidity, collateral, borrows, LoanToValue, …, HF)
 	require(HF > threshold) //Health factor
-	Compute the fee for the amountToBorrow
+	Compute the fee (0.0025%) for the amountToBorrow 
 	require(fee > 0)
 	Compute needed collateral to cover the borrows
 	require(user’s collateral >= collateral needed)
@@ -61,7 +61,7 @@ borrow (reserve, amountToBorrow){
 ```
 
 ```
-deposit(reserve, amountToDeposit, useAsCollateral){
+deposit (address reserve, uint256 amountToDeposit, bool useAsCollateral){
 	require(amount > 0)
 	require(msg.sender allows the deposit) //allowance method of ERC20
 	Transfer the amount to Lending Pool
@@ -71,5 +71,81 @@ deposit(reserve, amountToDeposit, useAsCollateral){
 }
 ```
 
+### Functions for computing users' data
+All of these functions can be called by everyone
+<hr />
+
+```
+function calculateUserGlobalData(user)
+```
+
+- Given a user, it returns 7 parameters: his total liquidity (deposited in all reserves), his total collateral, his total borrows, his total fees, his current Loan to value,  his liquidation threshold and its health factor.
+<hr />
+
+```
+function calculateHealthFactorFromBalancesInternal(collateral, borrow, fee, liquidationThreshold)
+```
+
+- This function compute the health factor of a user. The health factor depends on user’s collateral, borrow, fee and its liquidation threshold
+<hr />
+
+```
+function getUserBasicReserveData(user, reserve)
+```
+
+- Given a user and a reserve, it returns 4 parameteres: the amount of aTokens (minted), the compounded borrow balance, the fee and a Boolean indicating if user uses the reserve as collateral 
+<hr />
+
+```
+function getCompoundedBorrowBalance(user, reserve)
+```
+
+- Given a user and a reserve, it returns the amount of token borrowed+fee+interests for the reserve
+<hr />
+
+```
+function getUserBorrowBalances(user, reserve)
+```
+
+- Given a user and a reserve, it returns 3 parameters: the amount borrowed+fee, the amount borrowed+fee+interests, the interests.
+<hr />
+
+
+**_Other functions called by users, the oracle and the owner_**
+<hr />
+
+```
+function setPrice(address reserve, uint256 price)
+```
+- Only the oracle can set tokens’ prices.
+<hr />
+
+```
+function addReserve(address reserve)
+```
+
+- Only the owner can add a reserve
+<hr />
+
+```
+function calculateCollateralNeededInETH(address reserve, uint256 amount, uint256 fee, uint256 userBorrows, uint256 userFees, uint256 userLTV) returns(uint256)
+```
+
+- This function returns the collateral needed (in ETH) to cover the borrows (new amount to borrow + actual userBorrows). It can be called by everyone.
+<hr />
+
+```
+function setUserUseReserveAsCollateral(address reserve, bool useAsCollateral)
+```
+
+- This function allows the user (the msg.sender) to set if he uses the reserve as collateral. This function can abort if the user’s collateral makes his health factor under a given threshold
+<hr />
+
+```
+function balanceDecreaseAllowed(address reserve, address user, uint256 amount) returns(bool)
+```
+
+- This function returns true if an eventual decrease of a user’s collateral is allowed. It can be called by everyone.
+<hr />
 
 
