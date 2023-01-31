@@ -31,9 +31,11 @@ In Aave it is possible to configure each reserve, in particular, each of them ca
 
 ## 4. Main features of this work
 
-This section focuses on actors and their actions towards the Lending Pool contract.
+This section focuses mainly on actors and their actions towards the Lending Pool contract.
+All formulas that calculate interest rates, health factor, the amount of collateral needed to open a new borrow position, etc, have been taken from the original Aave's implementation.
 
-**_Actors_**
+### 4.1 Actors
+
 There are different actors involved in this work. All of them are represented by addresses and are:
 
 - the “owner” of the Lending Pool: it is the address that deploys the contract. The owner can add a reserve (that is a contract that handles a particular ERC20 token) to the lending pool and initializes it, settings some parameters;
@@ -42,7 +44,7 @@ There are different actors involved in this work. All of them are represented by
 
 - users: they are addresses that mostly call the borrow and the deposit functions and query the Lending Pool in order to view its state.
 
-### Borrow and deposit functions
+### 4.2 Borrow and deposit functions
 The borrow and deposit functions are summarized by the follow pseudocodes.
 
 ```
@@ -71,47 +73,48 @@ deposit (address reserve, uint256 amountToDeposit, bool useAsCollateral){
 }
 ```
 
-### Functions for computing users' data
+### 4.3 Functions for computing users' data
 All of these functions can be called by everyone
 <hr />
 
 ```
-function calculateUserGlobalData(user)
+function calculateUserGlobalData(address user) returns(uint256, uint256, uint256, uint256, uint256, uint256, uint256)
 ```
 
 - Given a user, it returns 7 parameters: his total liquidity (deposited in all reserves), his total collateral, his total borrows, his total fees, his current Loan to value,  his liquidation threshold and its health factor.
 <hr />
 
 ```
-function calculateHealthFactorFromBalancesInternal(collateral, borrow, fee, liquidationThreshold)
+function calculateHealthFactorFromBalancesInternal(uint256 collateral, uint256 borrow, uint256 fee, uint256 liquidationThreshold)
 ```
 
-- This function compute the health factor of a user. The health factor depends on user’s collateral, borrow, fee and its liquidation threshold
+- This function computes the health factor of a user. The health factor depends on user’s collateral, his borrow, his fee and his liquidation threshold.
 <hr />
 
 ```
-function getUserBasicReserveData(user, reserve)
+function getCompoundedBorrowBalance(address user, address reserve) returns(uint256)
 ```
 
-- Given a user and a reserve, it returns 4 parameteres: the amount of aTokens (minted), the compounded borrow balance, the fee and a Boolean indicating if user uses the reserve as collateral 
+- Given a user and a reserve, it returns the amount of user's tokens (borrowed+fee+interests) for the reserve. This amount is called "compounded borrow balance".
 <hr />
 
 ```
-function getCompoundedBorrowBalance(user, reserve)
+function getUserBasicReserveData(address user, address reserve) returns(uint256, uint256, uint256, bool)
 ```
 
-- Given a user and a reserve, it returns the amount of token borrowed+fee+interests for the reserve
-<hr />
-
-```
-function getUserBorrowBalances(user, reserve)
-```
-
-- Given a user and a reserve, it returns 3 parameters: the amount borrowed+fee, the amount borrowed+fee+interests, the interests.
+- Given a user and a reserve, it returns 4 parameteres: the amount of aTokens (minted), the compounded borrow balance, the fee and a boolean indicating if user uses the reserve as collateral 
 <hr />
 
 
-**_Other functions called by users, the oracle and the owner_**
+```
+function getUserBorrowBalances(address user, address reserve) returns(uint256, uint256, uint256)
+```
+
+- Given a user and a reserve, it returns 3 parameters: the amount (borrowed+fee), the amount (borrowed+fee+interests) and the interests.
+<hr />
+
+
+### 4.4 Other functions called by users, the oracle and the owner
 <hr />
 
 ```
