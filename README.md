@@ -44,15 +44,15 @@ There are different actors involved in this work. All of them are represented by
 
 - users: they are addresses that mostly call the borrow and the deposit functions and query the Lending Pool in order to view its state.
 
-### 4.2 Borrow and deposit functions
-The borrow and deposit functions are summarized by the follow pseudocodes.
+### 4.2 Borrow function
+The borrow is summarized by the follow pseudocodes.
 
 ```
 borrow (address reserve, uint256 amountToBorrow){
 	require(amountToBorrow > 0)
 	require(LiquidityOfLendingPool >= amountToBorrow)
 	Compute User Data //(total liquidity, collateral, borrows, LoanToValue, …, HF)
-	require(HF > threshold) //Health factor
+	require(HF > threshold) // threshold is tipically = 1
 	Compute the fee (0.0025%) for the amountToBorrow 
 	require(fee > 0)
 	Compute needed collateral to cover the borrows
@@ -62,18 +62,43 @@ borrow (address reserve, uint256 amountToBorrow){
 }
 ```
 
+The borrow function takes two parameters in input: the address of the reserve (that is the address of the contract handling the ERC20 token) from which the user (msg.sender) wants to borrow the "amountToBorrow" (the second parameter).
+
+After checking that the amount to borrow is greater than zero and the specified reserve has enough liquidity (in terms of the number of tokens), the function computes the msg.sender's data, and in particular his health-factor (HF). The HF is a value calculated as the ratio of collateral deposited versus the amount borrowed: if HF<1, the loans of a user can be liquidated and so he can not borrow other assets.
+
+After checking that user's HF is greater than 1, the function computes the fee, a fixed interest that is 0.0025% of the amount to borrow. As in Aave, the function checks that the fee is not zero.
+
+According to the user's data calculated before, the function computes the minimum collateral needed to cover the user's borrows (including this amount to borrow). The collateral needed is a value depends on user's total borrows (including the current amount to borrow), his fees and his Loan-To-Value.
+
+After checking that user has enough collateral, the function updates the state of the reserve (interest rates and timestamps). Finally, it transfers the number of _amountToBorrow_ tokens to the user, thanks to the Transfer method of the ERC20 contract.
+
+
+### 4.3 Deposit function
+The deposit is summarized by the follow pseudocodes.
 ```
 deposit (address reserve, uint256 amountToDeposit, bool useAsCollateral){
 	require(amount > 0)
 	require(msg.sender allows the deposit) //allowance method of ERC20
 	Transfer the amount to Lending Pool
-	Update the state of the reserve
 	Mint an amount of aTokens
+	Update the state of the reserve
 	Eventually set user uses this reserve as collateral
 }
 ```
 
-### 4.3 Functions for computing users' data
+The deposit function is more simple and short. It takes in input three parameters: the reserve in which the user (that is the msg.sender) wants to deposit, the amount to deposit and a boolean indicating if the user uses the reserve as collateral's deposit.
+
+After checking that the amount to deposit is greater than zero, the function checks if the user allowed the Lending Pool to withdraw the amount, thanks to the "allowance" function of ERC20 contract.
+
+Now, the Lending Pool calls the "TransferFrom" method of ERC20 contract, that transfers the amount from the msg.sender to the lending pool.
+An amount of "amountToDeposit" of aTokens are minted for the user. These aTokens provide the user can redeem them in the future.
+
+Finally, the function updates interest rates and timestamps for the reserve and keeps track in a data structure if the user wants to use the reserve as collateral.
+
+
+
+
+### 4.4 Functions for computing users' data
 All of these functions can be called by everyone
 <hr />
 
@@ -114,7 +139,7 @@ function getUserBorrowBalances(address user, address reserve) returns(uint256, u
 <hr />
 
 
-### 4.4 Other functions called by users, the oracle and the owner
+### 4.5 Other functions called by users, the oracle and the owner
 <hr />
 
 ```
@@ -151,4 +176,6 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 - This function returns true if an eventual decrease of a user’s collateral is allowed. It can be called by everyone.
 <hr />
 
+
+### 4.6 Functions for interests and interest rates.
 
