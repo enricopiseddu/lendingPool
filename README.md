@@ -26,7 +26,7 @@ Aave handles both ERC20 tokens and Ethers, in fact users can deposit both of the
 When using Aave, users can decide to open a borrow position with stable or variable rate. A stable rate ensures users expect (almost exactly) how much they will pay in interests. A variable rate is a rate that adjusts according the market’s offer and demand. In particular, it depends on the actual and the optimal utilization rate of the reserve and some constants. In this work, only variable borrow rate is used because the implementation of a stable borrow rate requires a continuous rebalancing process for each user.
 
 **_Lending Pool configuration_**
-In Aave it is possible to configure each reserve, in particular, each of them can be actived, freezed and enabled as collateral. An active and unfreezed reserve accepts deposits and borrows, while a freezed reserve accepts only repay and liquidation actions. These actions, in Aave, can be executed by a smart contract called “Lending Pool Configurator”. In this work, these actions are unnecessary because once a reserve is added, it is ready to accept deposits and borrows actions.
+In Aave it is possible to configure each reserve, in particular, each of them can be actived, freezed and enabled as collateral. An active and unfreezed reserve accepts deposits and borrows, while a freezed reserve accepts only repay and liquidation actions. These actions, in Aave, can be executed by a smart contract called “Lending Pool Configurator”. In this work, these actions are unnecessary because once a reserve is added, it is ready to accept deposits (also as collateral) and borrows actions.
 
 
 ## 4. Main features of this work
@@ -45,7 +45,7 @@ There are different actors involved in this work. All of them are represented by
 - users: they are addresses that mostly call the borrow and the deposit functions and query the Lending Pool in order to view its state.
 
 ### 4.2 Borrow function
-The borrow is summarized by the follow pseudocodes.
+The borrow function is summarized by the follow pseudocode:
 
 ```
 borrow (address reserve, uint256 amountToBorrow){
@@ -74,7 +74,7 @@ After checking that user has enough collateral, the function updates the state o
 
 
 ### 4.3 Deposit function
-The deposit is summarized by the follow pseudocodes.
+The deposit function is summarized by the follow pseudocode:
 ```
 deposit (address reserve, uint256 amountToDeposit, bool useAsCollateral){
 	require(amount > 0)
@@ -177,5 +177,19 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 <hr />
 
 
-### 4.6 Functions for interests and interest rates.
+### 4.6 Functions for interests and interest rates calculus.
+In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
+The interest rate for a reserve depends on:
+- the utilization rate, defined as the ratio between the total borrows and the available liquidity
+- the optimal utilization rate, set to 80% for all reserves.
+
+Both Aave and this work compute time as difference between block timestamps.
+
+The follow functions provide the interests and interest rate calculus:
+```
+function updateIndexes(address reserve)
+function calculateLinearInterest(uint256 rate, uint256 lastUpdateTimestamp) return(uint256)
+function calculateCompoundedInterest(uint256 rate, uint256 lastUpdateTimestamp) return(uint256)
+function calculateInterestRates(uint256 availableLiquidity, uint256 totalBorrows) return(uint256 currentLiquidityRate, uint256 currentVariableBorrowRate)
+```
