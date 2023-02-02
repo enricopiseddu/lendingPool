@@ -8,7 +8,7 @@ Although Aave provides a wide range of functions, the goal of this work is to su
 
 ## 2. Tools used
 This work is written in Solidity, and it is composed of four smart contracts:
-- [LendingPool.sol](https://github.com/enricopiseddu/lendingPool/blob/main/lendingPool.sol), the main contract. It is the core of this work: it defines the borrow and deposit functions and other functions used by them
+- [LendingPool.sol](https://github.com/enricopiseddu/lendingPool/blob/main/LendingPool.sol), the main contract. It is the core of this work: it defines the borrow and deposit functions and other functions used by them
 - [ERC20.sol](https://github.com/enricopiseddu/lendingPool/blob/main/ERC20.sol) is the contract that defines the ERC20 Token. Its interface is the [IERC20.sol](https://github.com/enricopiseddu/lendingPool/blob/main/IERC20.sol)
 - [Ownable.sol](https://github.com/enricopiseddu/lendingPool/blob/main/Ownable.sol) is the contract from which LendingPool.sol inherits: it defines the “owner” of the lending pool that is the only address that can configure it.
 - Finally, the library [WadRayMath.sol](https://github.com/enricopiseddu/lendingPool/blob/main/WadRayMath.sol) provides multiplications and divisions for wads and rays, respectively decimal numbers with 18 and 27 digits. Its usage is necessary because the language handles only integer numbers.
