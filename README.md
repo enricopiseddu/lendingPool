@@ -128,7 +128,7 @@ This section focuses on the differences between Aave’s deposit function and th
 
 
 ### 4.4 Functions for computing users' data
-All of these functions can be called by everyone
+All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
 
 ```
@@ -172,16 +172,22 @@ function getUserBorrowBalances(address user, address reserve) returns(uint256, u
 <hr />
 
 ```
-function setPrice(address reserve, uint256 price)
+function setPrice(address reserve, uint256 price) onlyOracle
 ```
 - Only the oracle can set tokens’ prices.
+
+In Aave's implementation, this function does not exist. In this work, it simulates the concept of Oracle which can modify the price of the tokens of a reserve.
+
 <hr />
 
 ```
 function addReserve(address reserve)
 ```
+- This function allows the creation of a new reserve with default data. The only input parameter is the address of the contract ERC20 that handles tokens. Only the owner can add a reserve.
 
-- Only the owner can add a reserve
+In Aave's implementation, the creation of a reserve is made by the ["LendingPoolConfiguration"](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolConfigurator.sol) contract and by the methods "initReserve" and "initReserveWithdata". The Lending Pool configuration contract allows also to modify some reserve's parameter (i.e. Liquidation Threshold, decimals...).
+
+
 <hr />
 
 ```
