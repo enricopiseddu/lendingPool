@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC-BY-4.0
 
-/// @title A high-level implementation of a Lending Pool for ERC20 tokens in DeFi
+/// @title A minimal implementation of Aave, focusing on borrow and deposit functions
 /// @author Enrico Piseddu
 
 pragma solidity >=0.7.0 <0.9.0;
