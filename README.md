@@ -32,8 +32,10 @@ These smart contracts are developed thanks to [Remix IDE](https://remix.ethereum
 
 ## 4. Main features of this work
 
-This section focuses mainly on actors and their actions towards the Lending Pool contract.
-All formulas that calculate interest rates, health factor, the amount of collateral needed to open a new borrow position, etc, have been taken from the original Aave's implementation.
+The work proposed is called “ProtoAave”. It is a minimal prototype of Aave original implementation that proposes minimal actions (mostly deposit and borrow actions) in order to understand how the state of the Lending Pool changes in response to specific transactions sent by users.
+
+The following subchapters focus mainly on actors and their actions towards the Lending Pool contract of this work. All formulas that calculate interest rates, health factor, the amount of collateral needed to open a new borrow position, etc, have been taken from the original Aave's implementation.
+
 
 ### 4.1 Actors
 
