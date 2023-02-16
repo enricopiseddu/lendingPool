@@ -330,3 +330,9 @@ In Aave it is possible to configure each reserve, in particular, each of them ca
 
 
 ## 7. Conclusions
+In this work, we have seen an overview of Lending Pools, how users can use them in order to handle their crypto-assets, and how Lending Pools help users in lending and borrowing actions without explicitly trusting each other, but trusting the smart contract that handles the LP. 
+
+ProtoAave has been developed and proposed as a minimal implementation of Aave Protocol. It has highlined when and how the deposit and borrow action can be executed, and how they modify the state of the LP – for example interest rates and users’ balances.
+
+This work differs to the original implementation of Aave, and differences have been shown.
+In the evaluation phase, an experiment has been shown with references to transactions recorded in the Goerli Testnet.
