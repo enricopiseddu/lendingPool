@@ -12,7 +12,9 @@ This section provides an overview of Lending Pools, their functionalities, and t
 On the one hand, users that deposit their assets increase the liquidity of the reserve (and so of the LP), on the other hand, this liquidity can be borrowed by other users that must deposit – in the lending pool – collateral to cover their borrows. 
 
 **_Collateralization_**  A collateral is an amount of crypto-asset that a user must deposit in the Lending Pool as security for his loans. A borrower can open many loans, the only constraint is that he has enough collateral. For this purpose, the health factor is used in order to establish if he can borrow anymore or if his position can be liquidated. The health factor is a parameter that depends on the user’s total borrows, the user’s total collateral, and on token’s price.
+
 A borrow position of a user can be liquidated when the health factor is under a particular threshold (typically 1). In a liquidation scenario, a liquidator repays a part of a user's borrow, he receives a part of the collateral of the user under liquidation and a bonus (typically in percentage).
+
 When a loan is completely repaid by the borrower (amount to borrow + interests), the Lending Pool returns the amount deposited as collateral.
 
 **_Interests_** Interests are an amount of crypto-asset that lenders receive for their deposits and borrowers must return for their borrows. In both cases, interests depend on the interest rate that is influenced by the utilization of the reserve as follows:
@@ -229,6 +231,80 @@ function calculateInterestRates(uint256 availableLiquidity, uint256 totalBorrows
 ```
 
 ## 5. Evaluation
+In this section, a small experiment is proposed, in order to verify the correctness of transactions. 
+
+This experiment involves the main smart contract called “Lending Pool” and the other two contracts representing two types of ERC20 tokens. All of these contracts are deployed on the Goerli Testnet, and it is possible to verify all their transactions in the Goerli explorer at [https://goerli.etherscan.io](https://goerli.etherscan.io)
+
+Addresses of users, involved in this experiment, that send transactions to the contracts:
+- The user “Owner” of Lending Pool, token T1 and token T2, defined as the address that deploys these contracts: [0x8FA60E3e17E31c021807481ED3b751C704E82Edf](https://goerli.etherscan.io/address/0x8FA60E3e17E31c021807481ED3b751C704E82Edf)
+- The user called “Alice”: [0xE2Eae77a4834884ba93B642a0a4a07Ec4D5Ca68E](https://goerli.etherscan.io/address/0xE2Eae77a4834884ba93B642a0a4a07Ec4D5Ca68E)
+- The user called “Bob”: [0x8A7E8F3FfFE9D8DdF733c9183f19Ee0Ea78d1EB2](https://goerli.etherscan.io/address/0x8A7E8F3FfFE9D8DdF733c9183f19Ee0Ea78d1EB2)
+
+**_Configuration before evaluation_**
+
+First of all, the Owner deploys the LP contract, T1 contract and T2 contract.
+
+Addresses of deployed contracts:			
+- Lending Pool (LP) at [0xF8A9973BCE282dF404C41e72D4D8Ffe885D86a5A](https://goerli.etherscan.io/address/0xF8A9973BCE282dF404C41e72D4D8Ffe885D86a5A)
+- ERC20 token (T1) at [0x050EDF9417862A3aa4Ca84cD199f1F0540E0df07](https://goerli.etherscan.io/address/0x050EDF9417862A3aa4Ca84cD199f1F0540E0df07)
+- ERC20 token (T2) at [0x10c2f1cCF6EeE9cA707228BfD5cD4F124D2C2a9C](https://goerli.etherscan.io/address/0x10c2f1cCF6EeE9cA707228BfD5cD4F124D2C2a9C)
+
+
+Then, the owner executes these transactions:
+- he distributes 10.000 tokens T1 to Alice [(transaction link)](https://goerli.etherscan.io/tx/0xac4b9941db9212cc1d500f9109c2de043fa039ff0ed78b7a6e13d9f6e4a6ea7c)
+- he distributes 10.000 tokens T2 to Bob [(transaction link)](https://goerli.etherscan.io/tx/0xe4153c021bd292ac63f41b28364b2218dee29a648c1520e03ddfe8f8b22c4258)
+- he adds to the LP contract two reserves corresponding to T1 token and T2 token, with default parameters (e.g. price of 1 Token = 1 ETH) [(transaction link)](https://goerli.etherscan.io/tx/0x5709e82364f88da737d8c264cd6a6f7ba1c0d860fa5be59acba3f7a22644c073) [(transaction link)](https://goerli.etherscan.io/tx/0x63165a64b153ea483bc5a4a654a13df6d6d525c24ff9ba8b8b035eb1385db7bb)
+
+
+**_Proposed scenario for the evaluation_**
+
+Alice and Bob are two users using the Lending Pool that handles T1 and T2 tokens. On one hand, Alice has 10.000 T1 out of the Lending Pool and she wants to borrow some T2 tokens, and on the other hand, Bob has 10.000 T2 out of the Lending Pool and he wants to deposit all his tokens.
+
+At this moment, the balances of users and the LP are:
+
+| 	      | T1	    | T2	|
+| ----------- | ----------- |-----------|
+| Alice       | 10.000       |	0	|
+| Bob	      | 0        |	10.000	|
+| Lending Pool| 0        |	0	|
+
+
+Before Alice borrows T2 tokens, she deposits, in the LP, 5.000 tokens T1 as collateral. Next, Bob decides to lend all his T2 tokens to the LP.
+
+Alice’s transactions: 
+- She approves (in ERC20 T1 contract) that the LP transfers 5.000 T1 from her to LP itself [(transaction link)](https://goerli.etherscan.io/tx/0xd12ada5e38e6e6db66f473714aedc360a5ff42bef62e22686f1ff51dc718b71b)
+- She calls the “deposit” method of LP, specifying to deposit 5.000 T1 as collateral [(transaction link)](https://goerli.etherscan.io/tx/0x18a6cd7aa654d71e31286c1b0702c91c55b006db4d5a88b38c18f3490038fe4a)
+
+Bob’s transactions:
+- He approves (in the ERC20 T2 contract) that the LP transfers 10.000 T2 from him to LP itself [(transaction link)](https://goerli.etherscan.io/tx/0x97797e139105c52f9c2f52179273f9bbcb756477f9e7f7b05c140038c44d28a7)
+- He calls the “deposit” method of LP, specifying to deposit 10.000 T2 not as collateral [(transaction link)](https://goerli.etherscan.io/tx/0x639db9a1c2084c6e619769b45e557fbceac3bbcba650ff7b66f4f08a1eb50ae1)
+
+After these 4 transactions, the state of balances is the follows:
+
+
+| 	      | T1	    | T2	|
+| ----------- | ----------- |-----------|
+| Alice       |5.000      |	0	|
+| Bob	      | 0        |	0	|
+| Lending Pool| 5.000        |	10.000	|
+
+
+At this point, Alice tries to borrow 4.000 T2, but she can’t because his collateral does not cover the borrow: the collateral minimum to borrow 4.000 T2 depends mostly on the actual Loan-To-Value of the user, which is 75%. So, the collateral minimum needed is about 5.333 T1 > 5.000 T1. As soon as Alice tries to send the transaction for borrowing, the IDE Remix alerts her that the transaction will be reverted with the appropriate message error:
+
+_insert image_
+
+In a second attempt, Alice tries to borrow 1.000 T2 by calling the “borrow” method, and the transaction [(transaction link)](https://goerli.etherscan.io/tx/0x0b63f59f2e9ef55dff95230a027b7c7005dd912658120d09d821f2fbbfa6a016) is correctly executed: she receives 1.000 tokens T2 from the LP. Now, the balances of users and LP are:
+
+| 	      | T1	    | T2	|
+| ----------- | ----------- |-----------|
+| Alice       |5.000      |	1.000	|
+| Bob	      | 0        |	0	|
+| Lending Pool| 5.000        |	9.000	|
+
+
+At this point, Bob – that has deposited 10.000 T1 not as collateral – tries to borrow 1.000 T2. When he sends the transaction, the IDE Remix tells us that he can not borrow because he has zero collateral:
+
+_insert image_
 
 
 ## 6. Main differences between this work and the original implementation
