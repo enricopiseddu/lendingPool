@@ -291,7 +291,10 @@ After these 4 transactions, the state of balances is the follows:
 
 At this point, Alice tries to borrow 4.000 T2, but she can’t because his collateral does not cover the borrow: the collateral minimum to borrow 4.000 T2 depends mostly on the actual Loan-To-Value of the user, which is 75%. So, the collateral minimum needed is about 5.333 T1 > 5.000 T1. As soon as Alice tries to send the transaction for borrowing, the IDE Remix alerts her that the transaction will be reverted with the appropriate message error:
 
-_insert image_
+
+<p align="center">
+  <img src="./img/a2trytoborrow4000t2.png" width="33%"/>
+</p>
 
 In a second attempt, Alice tries to borrow 1.000 T2 by calling the “borrow” method, and the transaction [(transaction link)](https://goerli.etherscan.io/tx/0x0b63f59f2e9ef55dff95230a027b7c7005dd912658120d09d821f2fbbfa6a016) is correctly executed: she receives 1.000 tokens T2 from the LP. Now, the balances of users and LP are:
 
@@ -304,8 +307,10 @@ In a second attempt, Alice tries to borrow 1.000 T2 by calling the “borrow” 
 
 At this point, Bob – that has deposited 10.000 T1 not as collateral – tries to borrow 1.000 T2. When he sends the transaction, the IDE Remix tells us that he can not borrow because he has zero collateral:
 
-_insert image_
 
+<p align="center">
+  <img src="./img/a3trytoborrowa1withoutcollateral.png" width="33%"/>
+</p>
 
 ## 6. Main differences between this work and the original implementation
 In order to focus on the “deposit” and “borrow” actions, this work contains some changes that do not prejudice the meaning of Aave protocol. In this section we will see these differences.
