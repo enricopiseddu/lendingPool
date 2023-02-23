@@ -256,7 +256,7 @@ Then, the owner executes these transactions:
 - he adds to the LP contract two reserves corresponding to T1 token and T2 token, with default parameters (e.g. price of 1 Token = 1 ETH) [(transaction link)](https://goerli.etherscan.io/tx/0x5709e82364f88da737d8c264cd6a6f7ba1c0d860fa5be59acba3f7a22644c073) [(transaction link)](https://goerli.etherscan.io/tx/0x63165a64b153ea483bc5a4a654a13df6d6d525c24ff9ba8b8b035eb1385db7bb)
 
 
-**_Proposed scenario for the borrow and deposit evaluation_**
+**_Borrow and Deposit Evaluation_**
 
 Alice and Bob are two users using the Lending Pool that handles T1 and T2 tokens. On one hand, Alice has 10.000 T1 out of the Lending Pool and she wants to borrow some T2 tokens, and on the other hand, Bob has 10.000 T2 out of the Lending Pool and he wants to deposit all his tokens.
 
@@ -314,7 +314,7 @@ At this point, Bob – that has deposited 10.000 T1 not as collateral – tries 
 
 
 
-**_Query the health factor_**
+**_Health factor evaluation_**
 
 These types of transactions, that are “view”, are not recorded in the blockchain but it is possible to see them in the Remix IDE.
 To view the health factor of any user, anyone can call the function “calculateUserGlobalData” passing in input the user’s address.
@@ -322,7 +322,7 @@ To view the health factor of any user, anyone can call the function “calculate
 The follow image proposes the response to this call, executed on Alice’s address:
 
 <p align="center">
-  <img src="./img/alicedata.png" width="33%"/>
+  <img src="./img/alicedata.png"/>
 </p>
 
 
@@ -331,12 +331,12 @@ Since Alice had deposited 5.000 T1 as collateral and then borrowed 1.000 T2, his
 The follow image proposes the response to this call, executed on Bob’s address:
 
 <p align="center">
-  <img src="./img/bobdata.png" width="33%"/>
+  <img src="./img/bobdata.png"/>
 </p>
 
 Since Bob has no borrow pending, his health factor is very high: it is set to 2^256 -1, the maximum integer representable.
 
-**_Setting reserves used as collateral_**
+**_Evaluation on setting reserves used as collateral_**
 
 Any user can decide to use a reserve as collateral. The only constraint is that the user had deposited some liquidity in that reserve.
 
@@ -345,7 +345,7 @@ For example, Bob has deposited 10.000 tokens T2, so he can set the reserve that 
 On the contrary, Alice has an active borrow of 1.000 T2 against a collateral deposit of 5.000 T1. At the moment, the LP does not allow Alice disables this reserve as collateral, because if it allowed her, her health factor would drop to zero, having zero collateral. When she tries to disable the reserve as collateral, the IDE Remix alerts her with an appropriate message:
 
 <p align="center">
-  <img src="./img/xxxxx.png" width="33%"/>
+  <img src="./img//alicetrytosetreservenotascollateral.png" width="33%"/>
 </p>
 
 ## 6. Main differences between this work and the original implementation
