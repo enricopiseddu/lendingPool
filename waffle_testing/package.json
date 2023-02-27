@@ -1,0 +1,28 @@
+{
+  "name": "tutorial",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "mocha test/*.ts --timeout 10000",
+    "lint": "eslint '{src,test}/**/*.ts'",
+    "lint:fix": "eslint --fix '{src,test}/**/*.ts'",
+    "build": "waffle"
+  },
+  "devDependencies": {
+    "@types/mocha": "^5.2.7",
+    "@typescript-eslint/eslint-plugin": "^2.30.0",
+    "@typescript-eslint/parser": "^2.30.0",
+    "chai": "^4.3.7",
+    "eslint": "^6.8.0",
+    "eslint-plugin-import": "^2.20.2",
+    "ethers": "^5.7.2",
+    "mocha": "^7.2.0",
+    "ts-node": "^8.9.1",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.1",
+    "safemath": "^1.0.6"
+  }
+}
