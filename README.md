@@ -254,6 +254,7 @@ Tests for ERC20 contract verify these conditions:
 
 
 ### 5.2 Tests for Lending Pool contract
+In the following tests, as default all tokens' prices are 1 ETH = 1 token. 
 
 #### 5.2.1 Adding reserves and setting prices. 
 **_Initialization_**  The owner deploys two contracts representing ERC20 tokens (T1 and T2), then deploys the Lending Pool and sets a particular address as price oracle.
@@ -278,9 +279,14 @@ Tests are:
 - Alice allows LP to deposit 5.000 T1. When she tries to deposit more (e.g. 6.000 T1), the transaction must revert and balances must not change.
 
 
-#### 5.2.3
+#### 5.2.3 Borrow function
+**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally Bob deposits all his T2 tokens to the Lending Pool.
 
-
+**_Proposed tests_**
+Tests are:
+- Alice deposits 5.000 T1 as collateral, then she tries to borrow 6.000 T2. The transaction must revert because her collateral does not cover the amount to borrow.
+- Bob tries to borrow 1.000 T1, but the reserve T1 is empty. The transaction must revert.
+- Alice deposits 5.000 T1 as collateral, then she borrows 1.000 T2. After the transaction, Alice's T2 balance must be 1.000, LP's T1 balance must be 9.000 (10.000 - 1.000).
 
 
 
