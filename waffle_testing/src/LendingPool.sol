@@ -142,17 +142,18 @@ contract LendingPool is Ownable{
         uint256 currentLiquidityRate = variableBorrowRate.rayMul(utilizationRate);
         
 
-        //update Ci
-        uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp);
+        if(totalBorrowsReserve > 0){
+            //update Ci
+            uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp);
 
-        reserves[_reserve].cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(reserves[_reserve].cumulatedLiquidityIndex);
+            reserves[_reserve].cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(reserves[_reserve].cumulatedLiquidityIndex);
 
 
-        //update Bvc
-        uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
+            //update Bvc
+            uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
 
-        reserves[_reserve].cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex);
-    
+            reserves[_reserve].cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex);
+        }
     }
 
     function calculateLinearInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
@@ -229,7 +230,7 @@ contract LendingPool is Ownable{
         );
 
         //update state for borrow action
-        //updateStateOnBorrow(_reserve, msg.sender, _amount, vars.borrowFee);
+        updateStateOnBorrow(_reserve, msg.sender, _amount, vars.borrowFee);
 
         //transfer assets: direct transfer of ERC20
         tokenToBorrow.transfer(msg.sender, _amount);
@@ -417,8 +418,9 @@ contract LendingPool is Ownable{
 
     function updateStateOnBorrow(address _reserve, address _user, uint256 _amountBorrowed, uint256 _borrowFee) internal{
         (, , uint256 balanceIncrease) = getUserBorrowBalances(_reserve, _user);
-
+        
         updateIndexes(_reserve);
+        
 
         // increase total borrows variable for the reserve
         reserves[_reserve].totalVariableBorrows += balanceIncrease.add(_amountBorrowed);
@@ -432,14 +434,16 @@ contract LendingPool is Ownable{
         
         users[_user].lastUpdateTimestamp[_reserve] = block.timestamp;
 
+     
+
         //update interest rates and timestamp for the reserve
         uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
         (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.sub(_amountBorrowed), reserves[_reserve].totalVariableBorrows);
 
-
         reserves[_reserve].currentLiquidityRate = newLiquidityRate;
         reserves[_reserve].variableBorrowRate = newVariableRate;
         reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+        
 
     }
 
