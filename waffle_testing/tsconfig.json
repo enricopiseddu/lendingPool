@@ -5,12 +5,12 @@
     "lib": [
       "ES2018"
     ],
-    "module": "CommonJS",
+    "module": "es2020",
     "moduleResolution": "node",
     "outDir": "dist",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "ES2018"
+    "target": "es2020"
   }
 }
