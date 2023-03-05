@@ -239,7 +239,7 @@ In this evaluation phase, the following tools are used:
 - the libraries “waffle-ethereum” and “ethers” are used in order to simulate and interact with the blockchain
 - the library “chai” for assertion tests. 
 
-Tests regards the main features proposed in ProtoAave, and are aggregated in “link_to_tests”.
+Tests regards the main features proposed in ProtoAave, and are aggregated [here](https://github.com/enricopiseddu/lendingPool/tree/main/waffle_testing/test).
 
 ### 5.1 Tests for ERC20 contracts
 **_Test initialization_** The owner deploys two ERC20 contracts called T1 and T2 and assigns to each 10.000 tokens. All tokens are assigned to the deployer (=owner).
@@ -289,8 +289,23 @@ Tests are:
 - Alice deposits 5.000 T1 as collateral, then she borrows 1.000 T2. After the transaction, Alice's T2 balance must be 1.000, LP's T1 balance must be 9.000 (10.000 - 1.000).
 
 
+#### 5.2.4 Health factor tests
+**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally, Bob deposits all his T2 tokens to the Lending Pool not as collateral, while Alice deposits all her T1 tokens as collateral
+
+**_Proposed tests_**
+Tests are:
+- Alice has no borrows, so her health factor must be set to maximum (2^256 -1, the greatest integer representable in Solidity)
+- Alice decides to borrow 1.000 T1. After the borrow action, her health factor must decrease with respect to the previous value.
+- Alice decides to borrow 1.000 T1 when the price of T1 and T2 (her collateral) are equal (set to 1 token = 1 ETH). Then, the T1 price increases from 1 to 20: this fluctuation must bring Alice's health factor under the liquidation threshold (=1.)
 
 
+#### 5.2.5 Tests on setting reserves as collateral
+**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Bob and 10.000 T2 to Alice. Finally, Bob deposits all his T1 tokens to the Lending Pool not as collateral.
+
+**_Proposed tests_**
+Tests are:
+- Since Bob has no borrows and he deposited 10.000 T1 as collateral, he can decide to set T1 reserve not more as collateral.
+- Alice deposits 10.000 T2 as collateral, then she borrows 1.000 T1. If she tries to set T2 not as collateral, the transaction must revert.
 
 
 
@@ -319,4 +334,4 @@ In this work, we have seen an overview of Lending Pools, how users can use them 
 ProtoAave has been developed and proposed as a minimal implementation of Aave Protocol. It has highlined when and how the deposit and borrow action can be executed, and how they modify the state of the LP – for example interest rates and users’ balances.
 
 This work differs to the original implementation of Aave, and differences have been shown.
-In the evaluation phase, an experiment has been shown with references to transactions recorded in the Goerli Testnet.
+In the evaluation phase, some experiments have been shown using different libraries and including different cases.
