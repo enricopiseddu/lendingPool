@@ -322,9 +322,9 @@ Tests are:
 - Alice deposits 20.000 T3 as collateral, then she borrow 10.000 T2 (from the reserve OVERUSED).
 - Alice deposits 20.000 T3 as collateral, then she borrow 10.000 T1 (from the reserve underused). 
 
-After 3 days, interests for T1 and T2 are shown.
+After a certain amount of time, interest for T1 and T2 is shown.
 
-The interests that Alice must pay for the borrow, must be greater for T2 tokens because the reserve is OVERUSED.
+The interests that Alice must pay for the borrow, must be greater for T2 tokens because the T2 reserve is OVERUSED.
 
 <hr />
 
@@ -352,9 +352,9 @@ In Aave it is possible to configure each reserve, in particular, each of them ca
 
 
 ## 7. Conclusions
-In this work, we have seen an overview of Lending Pools, how users can use them in order to handle their crypto-assets, and how Lending Pools help users in lending and borrowing actions without explicitly trusting each other, but trusting the smart contract that handles the LP. 
+In this work, we have seen an overview of Lending Pools, how users can use them in order to handle their crypto-assets (ERC20 tokens in this case), and how Lending Pools help users in lending and borrowing actions without explicitly trusting each other, but trusting the smart contract that handles the LP.
+ProtoAave has been developed and has been proposed as a minimal implementation of Aave Protocol. 
 
-ProtoAave has been developed and proposed as a minimal implementation of Aave Protocol. It has highlined when and how the deposit and borrow action can be executed, and how they modify the state of the LP – for example interest rates and users’ balances.
+It has highlighted when and how the deposit and borrow action can be executed, how users can manage their collaterals according to their health factors, and how interests for borrowers depend on time and on the utilization rate of a reserve.
 
-This work differs to the original implementation of Aave, and differences have been shown.
-In the evaluation phase, some experiments have been shown using different libraries and including different cases.
+This work differs from the original implementation of Aave, and differences have been shown. In the evaluation phase, some experiments have been shown using different libraries and including different cases in order to demonstrate the correctness of transactions. 
