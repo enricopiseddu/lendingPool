@@ -7,7 +7,7 @@ import ERC20       from '../build/ERC20.json';
 
 use(solidity);
 
-describe('Simulate time', () => {
+describe('Simulation of the time and interests', () => {
   const provider = new MockProvider();
   const [owner, alice, bob, priceOracle] = provider.getWallets();
 
@@ -63,23 +63,14 @@ describe('Simulate time', () => {
       //Alice borrows 10.000 T2
       await lpCalledByAlice.borrow(token2.address, 10000);
 
-      // We simulate time passes... (3 days)
-      const currentBlock = await provider.getBlockNumber();
-      const blockTimestamp = (await provider.getBlock(currentBlock)).timestamp;
-      console.log(blockTimestamp);
-
-      await provider.send("evm_increaseTime", [60*60*24*1000]) // we add 1000 days (in seconds)
+      // We simulate time passes... (3 days)     
+      await provider.send("evm_increaseTime", [60*60*24*3]) // we add 1000 days (in seconds)
       await provider.send("evm_mine", []) // force mine the next block
 
       //Calculate interests for the borrow
       let res = await lpCalledByAlice.getUserBorrowBalances(token2.address, alice.address);
       let {0: value1, 1: value2, 2: interests} = res;
-      console.log(interests.toNumber());
-
-      const currentBlock1 = await provider.getBlockNumber();
-      const blockTimestamp1 = (await provider.getBlock(currentBlock1)).timestamp;
-      console.log(blockTimestamp1);
-
+      console.log('Amount borrowed + fee: ', value1.toNumber(), 'Borrowed+fee+interests: ', value2.toNumber(), 'Interests: ',interests.toNumber());
 
   });
 
@@ -97,27 +88,13 @@ describe('Simulate time', () => {
       await lpCalledByAlice.borrow(token1.address, 10000);
 
       // We simulate time passes... (3 days)
-      const currentBlock = await provider.getBlockNumber();
-      const blockTimestamp = (await provider.getBlock(currentBlock)).timestamp;
-      console.log(blockTimestamp);
-
-      await provider.send("evm_increaseTime", [60*60*24*1000]) // we add 1000 days (in seconds)
+      await provider.send("evm_increaseTime", [60*60*24*3]) // we add 1000 days (in seconds)
       await provider.send("evm_mine", []) // force mine the next block
 
       //Calculate interests for the borrow
-      let res = await lpCalledByAlice.getUserBorrowBalances(token2.address, alice.address);
+      let res = await lpCalledByAlice.getUserBorrowBalances(token1.address, alice.address);
       let {0: value1, 1: value2, 2: interests} = res;
-      console.log(interests.toNumber());
-
-      const currentBlock1 = await provider.getBlockNumber();
-      const blockTimestamp1 = (await provider.getBlock(currentBlock1)).timestamp;
-      console.log(blockTimestamp1);
-
-
+      console.log('Amount borrowed + fee: ', value1.toNumber(), 'Borrowed+fee+interests: ', value2.toNumber(), 'Interests: ',interests.toNumber());
 
   });
-
-
-
-
 });
