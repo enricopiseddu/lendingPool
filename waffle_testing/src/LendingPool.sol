@@ -44,9 +44,9 @@ contract LendingPool is Ownable{
     address[] public reserves_array;
 
     //parameter used for interest calculus: they must be initialized here and they are applied to all reserves
-    uint256 baseVariableBorrowRate;
-    uint256 r_slope1;
-    uint256 r_slope2;
+    uint256 baseVariableBorrowRate = 1e27;
+    uint256 r_slope1 = 8e27;
+    uint256 r_slope2 = 200e27;
 
     address public priceOracle;
 
@@ -183,7 +183,7 @@ contract LendingPool is Ownable{
     }
 
     function borrow(address _reserve, uint256 _amount) public{
-
+   
         BorrowLocalVars memory vars;
 
         ERC20 tokenToBorrow = ERC20(_reserve);
@@ -191,7 +191,7 @@ contract LendingPool is Ownable{
         require(_amount > 0, "Amount to borrow must be greater than 0");
 
         require( tokenToBorrow.balanceOf(address(this)) >= _amount, "Not enough liquidity for the borrow");
-
+        
         (
             ,
             vars.userCollateralBalanceETH,
@@ -213,7 +213,7 @@ contract LendingPool is Ownable{
         vars.borrowFee = _amount.wadMul(ORIGINATION_FEE_PERCENTAGE);
         
         require(vars.borrowFee > 0, "The amount to borrow is too small");
-
+        
         //calculate collateral needed
         vars.amountOfCollateralNeededETH = calculateCollateralNeededInETH(
             _reserve,
@@ -228,7 +228,7 @@ contract LendingPool is Ownable{
             vars.amountOfCollateralNeededETH <= vars.userCollateralBalanceETH,
             "There is not enough collateral to cover a new borrow"
         );
-
+        
         //update state for borrow action
         updateStateOnBorrow(_reserve, msg.sender, _amount, vars.borrowFee);
 
@@ -360,7 +360,7 @@ contract LendingPool is Ownable{
 
         uint256 principalBorrowBalanceRay = users[_user].numberOfTokensBorrowed[_reserve].wadToRay();
 
-        uint256 cumulatedInterest = calculateCompoundedInterest(reserves[_reserve].cumulatedVariableBorrowIndex, reserves[_reserve].lastUpdateTimestamp);
+        uint256 cumulatedInterest = calculateCompoundedInterest(reserves[_reserve].variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
 
         cumulatedInterest = cumulatedInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex).rayDiv(users[_user].lastVariableBorrowCumulativeIndex[_reserve]);
 
