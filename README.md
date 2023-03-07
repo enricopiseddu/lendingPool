@@ -3,7 +3,7 @@
 ## 1. Introduction and goal
 [Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi) based on the Lending Pool (LP) concept. LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing.
 
-Although Aave provides a wide range of functions, the goal of this work is to summarize and focus on the main functions of Aave, that are “borrow” and “deposit”, highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
+Although Aave provides a wide range of functions, the goal of this work is to summarize and focus on the main functions of Aave, which are “borrow” and “deposit”, highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
 
 ## 2. Background
 This section provides an overview of Lending Pools, their functionalities, and their assets.
@@ -47,7 +47,7 @@ There are different actors involved in this work. All of them are represented by
 
 - the “price Oracle”, an address set by the “owner” that can modify ERC20 tokens’ price;
 
-- users: they are addresses that mostly call the borrow and the deposit functions and query the Lending Pool in order to view its state.
+- users: they are addresses that mostly call the borrow and the deposit functions, manage their collateral, and query the Lending Pool in order to view its state.
 
 ### 4.2 Borrow function
 The borrow function is summarized by the follow pseudocode:
@@ -246,7 +246,7 @@ Tests regards the main features proposed in ProtoAave, and are aggregated [here]
 
 **_Proposed tests_**
 Tests for ERC20 contract verify these conditions:
-- It check if the owner owns 10.000 T1 tokens and 10.000 t2 tokens
+- It checks if the owner owns 10.000 T1 tokens and 10.000 t2 tokens
 - The owner directly transfers 10.000 T1 to Alice, then checks if Alice’s T1 balance is 10.000
 - The owner directly transfers 10.000 T2 to Bob, then checks if Bob’s T2 balance is 10.000
 - The owner tries to transfer 10.000 T2 to Bob without allowance, the transaction must fail and balances must not change.
@@ -254,7 +254,7 @@ Tests for ERC20 contract verify these conditions:
 
 
 ### 5.2 Tests for Lending Pool contract
-In the following tests, as default all tokens' prices are 1 ETH = 1 token. 
+In the following tests, when not specified, all tokens' prices are equal and are set to 1 ETH = 1 token. 
 
 <hr />
 
@@ -294,7 +294,7 @@ Tests are:
 <hr />
 
 #### 5.2.4 Health factor tests
-**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally, Bob deposits all his T2 tokens to the Lending Pool not as collateral, while Alice deposits all her T1 tokens as collateral
+**_Initialization_**   The owner deploys the LP and two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 to the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally, Bob deposits all his T2 tokens to the Lending Pool not as collateral, while Alice deposits all her T1 tokens as collateral
 
 **_Proposed tests_**
 Tests are:
@@ -305,7 +305,7 @@ Tests are:
 <hr />
 
 #### 5.2.5 Tests on setting reserves as collateral
-**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Bob and 10.000 T2 to Alice. Finally, Bob deposits all his T1 tokens to the Lending Pool as collateral.
+**_Initialization_**   The owner deploys the LP and two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Bob and 10.000 T2 to Alice. Finally, Bob deposits all his T1 tokens to the Lending Pool as collateral.
 
 **_Proposed tests_**
 Tests are:
@@ -316,7 +316,7 @@ Tests are:
 
 
 #### 5.2.6 Tests on interests and time
-**_Initialization_**   The owner deploys three contracts representing ERC20 tokens: "T1", "T2" and "T3" with an initial balance of 100.000 T1, 100.000 T2 and 500.000 T3. Next, the owner adds T1, T2 and T3 in the LP, he distributes 100.000 T1 and T2 to LP and 250.000 T3 to Alice and Bob. Bob deposits 250.000 T3 as collateral and he borrows 90.000 T2 making the reserve T2 overused (utilization rate > 80%). The reserve T1 is underused because it has no borrows.
+**_Initialization_**   The owner deploys the LP and three contracts representing ERC20 tokens: "T1", "T2" and "T3" with an initial balance of 100.000 T1, 100.000 T2 and 500.000 T3. Next, the owner adds T1, T2 and T3 to the LP, he distributes 100.000 T1 and T2 to LP and 250.000 T3 to Alice and Bob. Bob deposits 250.000 T3 as collateral and he borrows 90.000 T2 making the reserve T2 overused (utilization rate > 80%). The reserve T1 is underused because it has no borrows.
 
 **_Proposed tests_**
 - Alice deposits 20.000 T3 as collateral, then she borrow 10.000 T2 (from the reserve OVERUSED).
