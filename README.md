@@ -236,8 +236,8 @@ These experiments involve the main smart contract called “Lending Pool” and 
 
 In this evaluation phase, the following tools are used:
 - Typescript language
-- the libraries “waffle-ethereum” and “ethers” are used in order to simulate and interact with the blockchain
-- the library “chai” for assertion tests. 
+- the libraries [“waffle-ethereum”](https://getwaffle.io/) and [“ethers”](https://docs.ethers.org/v5/) are used in order to simulate and interact with the blockchain
+- the library [“chai”](https://www.chaijs.com/) for assertion tests. 
 
 Tests regards the main features proposed in ProtoAave, and are aggregated [here](https://github.com/enricopiseddu/lendingPool/tree/main/waffle_testing/test).
 
@@ -256,6 +256,8 @@ Tests for ERC20 contract verify these conditions:
 ### 5.2 Tests for Lending Pool contract
 In the following tests, as default all tokens' prices are 1 ETH = 1 token. 
 
+<hr />
+
 #### 5.2.1 Adding reserves and setting prices. 
 **_Initialization_**  The owner deploys two contracts representing ERC20 tokens (T1 and T2), then deploys the Lending Pool and sets a particular address as price oracle.
 
@@ -266,7 +268,7 @@ Tests are:
 - The owner adds a reserve in LP. The price oracle modifies the price of the token handled by that reserve. The price must be updated.
 - The owner adds a reserve in LP. An address (not the oracle) tries to modify the token price handled by that reserve. The transaction must fail.
 
-
+<hr />
 
 
 #### 5.2.2 Deposit function
@@ -278,6 +280,7 @@ Tests are:
 - Alice does not approve the deposit of 10.000 T1 in LP. When she tries to deposit 10.000 T1, the transaction must revert and balances must not change.
 - Alice allows LP to deposit 5.000 T1. When she tries to deposit more (e.g. 6.000 T1), the transaction must revert and balances must not change.
 
+<hr />
 
 #### 5.2.3 Borrow function
 **_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally Bob deposits all his T2 tokens to the Lending Pool.
@@ -288,6 +291,7 @@ Tests are:
 - Bob tries to borrow 1.000 T1, but the reserve T1 is empty. The transaction must revert.
 - Alice deposits 5.000 T1 as collateral, then she borrows 1.000 T2. After the transaction, Alice's T2 balance must be 1.000, LP's T1 balance must be 9.000 (10.000 - 1.000).
 
+<hr />
 
 #### 5.2.4 Health factor tests
 **_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally, Bob deposits all his T2 tokens to the Lending Pool not as collateral, while Alice deposits all her T1 tokens as collateral
@@ -298,18 +302,37 @@ Tests are:
 - Alice decides to borrow 1.000 T1. After the borrow action, her health factor must decrease with respect to the previous value.
 - Alice decides to borrow 1.000 T1 when the price of T1 and T2 (her collateral) are equal (set to 1 token = 1 ETH). Then, the T1 price increases from 1 to 20: this fluctuation must bring Alice's health factor under the liquidation threshold (=1.)
 
+<hr />
 
 #### 5.2.5 Tests on setting reserves as collateral
-**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Bob and 10.000 T2 to Alice. Finally, Bob deposits all his T1 tokens to the Lending Pool not as collateral.
+**_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Bob and 10.000 T2 to Alice. Finally, Bob deposits all his T1 tokens to the Lending Pool as collateral.
 
 **_Proposed tests_**
 Tests are:
 - Since Bob has no borrows and he deposited 10.000 T1 as collateral, he can decide to set T1 reserve not more as collateral.
 - Alice deposits 10.000 T2 as collateral, then she borrows 1.000 T1. If she tries to set T2 not as collateral, the transaction must revert.
 
+<hr />
 
 
+#### 5.2.6 Tests on interests and time
+**_Initialization_**   The owner deploys three contracts representing ERC20 tokens: "T1", "T2" and "T3" with an initial balance of 100.000 T1, 100.000 T2 and 500.000 T3. Next, the owner adds T1, T2 and T3 in the LP, he distributes 100.000 T1 and T2 to LP and 250.000 T3 to Alice and Bob. Bob deposits 250.000 T3 as collateral and he borrows 90.000 T2 making the reserve T2 overused (utilization rate > 80%). The reserve T1 is underused because it has no borrows.
 
+**_Proposed tests_**
+- Alice deposits 20.000 T3 as collateral, then she borrow 10.000 T2 (from the reserve OVERUSED).
+- Alice deposits 20.000 T3 as collateral, then she borrow 10.000 T1 (from the reserve underused). 
+
+After 3 days, interests for T1 and T2 are shown.
+
+The interests that Alice must pay for the borrow, must be greater for T2 tokens because the reserve is OVERUSED.
+
+<hr />
+
+This image shows the output about tests.
+
+<p align="center">
+  <img src="./img/alltests.PNG"/>
+</p>
 
 ## 6. Main differences between this work and the original implementation
 In order to focus on the “deposit” and “borrow” actions, this work contains some changes that do not prejudice the meaning of Aave protocol. In this section we will see these differences.
