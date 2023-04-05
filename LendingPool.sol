@@ -44,9 +44,9 @@ contract LendingPool is Ownable{
     address[] public reserves_array;
 
     //parameter used for interest calculus: they must be initialized here and they are applied to all reserves
-    uint256 baseVariableBorrowRate;
-    uint256 r_slope1;
-    uint256 r_slope2;
+    uint256 baseVariableBorrowRate = 1e27;
+    uint256 r_slope1 = 8e27;
+    uint256 r_slope2 = 200e27;
 
     address public priceOracle;
 
@@ -68,6 +68,10 @@ contract LendingPool is Ownable{
 
     constructor(address _priceOracle){
         priceOracle = _priceOracle;
+    }
+
+    function getNumberOfReserves() public view returns(uint256){
+       return numberOfReserves;
     }
 
     function setPrice(address _reserve, uint256 _price) public onlyPriceOracle{
@@ -138,17 +142,18 @@ contract LendingPool is Ownable{
         uint256 currentLiquidityRate = variableBorrowRate.rayMul(utilizationRate);
         
 
-        //update Ci
-        uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp);
+        if(totalBorrowsReserve > 0){
+            //update Ci
+            uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp);
 
-        reserves[_reserve].cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(reserves[_reserve].cumulatedLiquidityIndex);
+            reserves[_reserve].cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(reserves[_reserve].cumulatedLiquidityIndex);
 
 
-        //update Bvc
-        uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
+            //update Bvc
+            uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
 
-        reserves[_reserve].cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex);
-    
+            reserves[_reserve].cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex);
+        }
     }
 
     function calculateLinearInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
@@ -178,7 +183,7 @@ contract LendingPool is Ownable{
     }
 
     function borrow(address _reserve, uint256 _amount) public{
-
+   
         BorrowLocalVars memory vars;
 
         ERC20 tokenToBorrow = ERC20(_reserve);
@@ -186,7 +191,7 @@ contract LendingPool is Ownable{
         require(_amount > 0, "Amount to borrow must be greater than 0");
 
         require( tokenToBorrow.balanceOf(address(this)) >= _amount, "Not enough liquidity for the borrow");
-
+        
         (
             ,
             vars.userCollateralBalanceETH,
@@ -208,7 +213,7 @@ contract LendingPool is Ownable{
         vars.borrowFee = _amount.wadMul(ORIGINATION_FEE_PERCENTAGE);
         
         require(vars.borrowFee > 0, "The amount to borrow is too small");
-
+        
         //calculate collateral needed
         vars.amountOfCollateralNeededETH = calculateCollateralNeededInETH(
             _reserve,
@@ -223,7 +228,7 @@ contract LendingPool is Ownable{
             vars.amountOfCollateralNeededETH <= vars.userCollateralBalanceETH,
             "There is not enough collateral to cover a new borrow"
         );
-
+        
         //update state for borrow action
         updateStateOnBorrow(_reserve, msg.sender, _amount, vars.borrowFee);
 
@@ -355,7 +360,7 @@ contract LendingPool is Ownable{
 
         uint256 principalBorrowBalanceRay = users[_user].numberOfTokensBorrowed[_reserve].wadToRay();
 
-        uint256 cumulatedInterest = calculateCompoundedInterest(reserves[_reserve].cumulatedVariableBorrowIndex, reserves[_reserve].lastUpdateTimestamp);
+        uint256 cumulatedInterest = calculateCompoundedInterest(reserves[_reserve].variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
 
         cumulatedInterest = cumulatedInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex).rayDiv(users[_user].lastVariableBorrowCumulativeIndex[_reserve]);
 
@@ -413,8 +418,9 @@ contract LendingPool is Ownable{
 
     function updateStateOnBorrow(address _reserve, address _user, uint256 _amountBorrowed, uint256 _borrowFee) internal{
         (, , uint256 balanceIncrease) = getUserBorrowBalances(_reserve, _user);
-
+        
         updateIndexes(_reserve);
+        
 
         // increase total borrows variable for the reserve
         reserves[_reserve].totalVariableBorrows += balanceIncrease.add(_amountBorrowed);
@@ -428,14 +434,16 @@ contract LendingPool is Ownable{
         
         users[_user].lastUpdateTimestamp[_reserve] = block.timestamp;
 
+     
+
         //update interest rates and timestamp for the reserve
         uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
         (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.sub(_amountBorrowed), reserves[_reserve].totalVariableBorrows);
 
-
         reserves[_reserve].currentLiquidityRate = newLiquidityRate;
         reserves[_reserve].variableBorrowRate = newVariableRate;
         reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+        
 
     }
 
@@ -583,5 +591,58 @@ contract LendingPool is Ownable{
         return healthFactorAfterDecrease > HEALTH_FACTOR_LIQUIDATION_THRESHOLD;
 
     }
+
+
+
+    function repay(address _reserve, uint256 _amountToRepay, address _userToRepay) public{
+
+        ERC20 tokenToRepay = ERC20(_reserve);
+
+        (, uint256 compoundedBalance, uint256 interests ) = getUserBorrowBalances(_reserve, _userToRepay);
+
+        uint256 fee = users[_userToRepay].fees[_reserve];
+
+        //check if user is not under liquidation
+        ( ,,,,,, uint256 healthFactor) = calculateUserGlobalData(_userToRepay);
+        require(healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "User can not be repaid: he is under liquidation");
+        
+        //check if user has pending borrows in the reserve
+        require(compoundedBalance > 0, "User can not be repaid: he has not borrows in the reserve");
+
+        //only a complete repayment is allowed
+        require(_amountToRepay == compoundedBalance, "Only a complete repayment is allowed");
+        require(tokenToRepay.allowance(msg.sender, address(this)) == compoundedBalance, "Msg. sender must approve LP to transfer assets");
+
+        //update state on repay
+        updateStateOnRepay(_reserve, _userToRepay, _amountToRepay, fee, interests);
+
+        //transfer assets to LP reserve
+        tokenToRepay.transferFrom(msg.sender, address(this), _amountToRepay);
+
+    }
+
+
+    function updateStateOnRepay(address _reserve, address _userToRepay, uint256 _amountToRepay, uint256 _fee, uint256 _interests) internal{
+        //update reserve state
+        updateIndexes(_reserve);
+        reserves[_reserve].totalVariableBorrows -= (_amountToRepay - _fee - _interests); //subtract the amount borrowed
+        reserves[_reserve].totalVariableBorrows += (_fee + _interests); //add fee and interests
+
+        //update user state for the reserve: all values are 0 because the repayment is complete
+        users[_userToRepay].numberOfTokensBorrowed[_reserve] = 0;
+        users[_userToRepay].lastVariableBorrowCumulativeIndex[_reserve] = 0;
+        users[_userToRepay].fees[_reserve] = 0;
+        users[_userToRepay].lastUpdateTimestamp[_reserve] = 0;
+
+         //update interest rates and timestamp for the reserve
+        uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
+        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.add(_amountToRepay), reserves[_reserve].totalVariableBorrows);
+
+        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
+        reserves[_reserve].variableBorrowRate = newVariableRate;
+        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+
+    }
+
 
 }
