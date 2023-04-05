@@ -126,9 +126,24 @@ This section focuses on the differences between Aave’s deposit function and th
 
 - In the PDP, before the Lending Pool transfers the amount of tokens from the _msg.sender_ to its address, it checks (thanks to "allowance" method of ERC20) if _msg.sender_ has allowed this transfer. In the ADP this check is not executed. 
 
+### 4.4 Repay function
+The repay function is summarized by the follow pseudocode:
+```
+repay (address reserve, uint256 amountToRepay, address userToRepay){
+	require(userToRepay has HF > threshold)
+	require(userToRepay has an actove loan in the reserve)
+	require(amountToRepay == debit of user to repay)
+	require(msg.sender approves the LP to transfer the amountToRepay)
+	Update state on repay action
+	Transfer the assets from msg.sender to LP
+}
+```
 
+The repay function takes as input three parameters: the address of the reserve to repay, the amount to repay, and the user having a pending borrow.
+Firstly, the function checks the user's health factor is above the threshold (i.e. the user must not be under liquidation) and the user has an active borrow in the reserve. Next, it checks that the amountToRepay is equal to the debt (amount borrowed + fee + interests) of the userToRepay and if the msg.sender has allowed the Lending Pool to withdraw the amount to repay.
+If all these checks are satisfied, the function updates the state of the lending pool and the user, and finally it transfers the amount to repay from the msg.sender to the reserve of the LP.
 
-### 4.4 Functions for computing users' data
+### 4. Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
 
@@ -169,7 +184,7 @@ function getUserBorrowBalances(address user, address reserve) returns(uint256, u
 <hr />
 
 
-### 4.5 Other functions called by users, the oracle and the owner
+### 4. Other functions called by users, the oracle and the owner
 <hr />
 
 ```
@@ -213,7 +228,7 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 <hr />
 
 
-### 4.6 Functions for interests and interest rates calculus.
+### 4. Functions for interests and interest rates calculus.
 In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
 The interest rate for a reserve depends on:
