@@ -48,6 +48,8 @@ contract LendingPool is Ownable{
     uint256 r_slope1 = 8e27;
     uint256 r_slope2 = 200e27;
 
+    mapping(address=>mapping(address=>uint256)) usersIndexes; //used for incoming interests, user=>reserve=>index
+
     address public priceOracle;
 
     uint256 public constant OPTIMAL_UTILIZATION_RATE = 0.8 * 1e27; //express in ray
@@ -114,6 +116,8 @@ contract LendingPool is Ownable{
         //update ci and bvc and rates
         updateIndexes(_reserve);
 
+        //eventually adds accrued interests 
+        cumulateBalanceInternal(msg.sender, _reserve);
 
         aTokens[msg.sender][_reserve] += _amount;
 
@@ -645,4 +649,72 @@ contract LendingPool is Ownable{
     }
 
 
+
+    function cumulateBalanceInternal(address _user, address _reserve) internal returns(uint256, uint256, uint256, uint256){
+        uint256 aTokensPreviousBalance = aTokens[_user][_reserve];
+        uint256 cumulatedBalance = balanceOfAtokens(_user, _reserve); //aTokens + interests accrued
+
+        uint accruedInterests = cumulatedBalance - aTokensPreviousBalance;
+
+        //mint interests of ATokens
+        aTokens[_user][_reserve] += accruedInterests;
+
+        //update user index
+        usersIndexes[_user][_reserve] = getNormalizedIncome(_reserve);
+
+        return (aTokensPreviousBalance, cumulatedBalance, accruedInterests, usersIndexes[_user][_reserve]);
+    }
+
+
+    function getNormalizedIncome(address _reserve) internal view returns(uint256){
+        return calculateLinearInterest(reserves[_reserve].currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp).
+                    rayMul(reserves[_reserve].cumulatedLiquidityIndex);
+    }
+
+
+    //it returns the amount of aTokens + interests accrued
+    function balanceOfAtokens(address _user, address _reserve) public view returns(uint256){
+        uint256 currentBalance = aTokens[_user][_reserve];
+        if (currentBalance == 0){ return 0;}
+        
+        return currentBalance.wadToRay().rayMul(getNormalizedIncome(_reserve)).rayDiv(usersIndexes[_user][_reserve]).rayToWad();
+    }
+
+
+
+    function redeemAllTokens(address _reserve) public{
+        ERC20 tokenToRedeem = ERC20(_reserve);
+
+        //msg.sender can redeem all his tokens + accrued interests
+        (uint256 aTokensWithoutInterests, uint256 amountToRedeem, ,) = cumulateBalanceInternal(msg.sender, _reserve);
+
+        require(balanceDecreaseAllowed(_reserve, msg.sender, aTokensWithoutInterests), "You can not redeem by the reserve");
+
+        //burn all aTokens
+        aTokens[msg.sender][_reserve] = 0;
+
+        // reset user index
+        usersIndexes[msg.sender][_reserve] = 0;
+
+        //check reserve has enough liquidity to redeem
+        require(tokenToRedeem.balanceOf(address(this)) >= amountToRedeem, "The reserve has not enough liquidity");
+
+        updateStateOnRedeem(_reserve, amountToRedeem);
+
+        // trasfer assets
+        tokenToRedeem.transfer(msg.sender, amountToRedeem);
+    }
+
+
+    function updateStateOnRedeem(address _reserve, uint256 _amountToRedeem) internal{
+        updateIndexes(_reserve);
+
+        //update interest rates and timestamp for the reserve
+        uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
+        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.sub(_amountToRedeem), reserves[_reserve].totalVariableBorrows);
+
+        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
+        reserves[_reserve].variableBorrowRate = newVariableRate;
+        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+    }
 }
