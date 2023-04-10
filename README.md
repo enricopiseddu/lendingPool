@@ -143,6 +143,12 @@ The repay function takes as input three parameters: the address of the reserve t
 Firstly, the function checks the user's health factor is above the threshold (i.e. the user must not be under liquidation) and the user has an active borrow in the reserve. Next, it checks that the amountToRepay is equal to the debt (amount borrowed + fee + interests) of the userToRepay and if the msg.sender has allowed the Lending Pool to withdraw the amount to repay.
 If all these checks are satisfied, the function updates the state of the lending pool and the user, and finally it transfers the amount to repay from the msg.sender to the reserve of the LP.
 
+When the repay function is successfully executed, the userToRepay's health factor increases allowing him to redeem the value of the collateral used in the loan just repaid. 
+
+#### 4.4.1 Differences between repay functions
+The main difference between the repay function proposed in this work and the original implementation in Aave, is that in the proposed implementation it is possible only repay completely the debt, while in Aave the msg.sender can repay also only a part of it. 
+In both implementations, the caller (msg.sender) can repay the debt of another user specifying the address, or the own debt specifying his address.
+
 ### 4. Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
