@@ -149,6 +149,36 @@ When the repay function is successfully executed, the userToRepay's health facto
 The main difference between the repay function proposed in this work and the original implementation in Aave, is that in the proposed implementation it is possible only repay completely the debt, while in Aave the msg.sender can repay also only a part of it. 
 In both implementations, the caller (msg.sender) can repay the debt of another user specifying the address, or the own debt specifying his address.
 
+
+### 4.5 Redeem function
+The redeem function is summarized by the follow pseudocode:
+```
+redeemAllTokens (address reserve){
+	amountToRedeem = Get the amount to redeem (including interests accrued) for the msg.sender
+	require(amountToRedeem > 0)
+	require(msg.sender's Health Factor > threshold, after redeem action)
+	Burn the aTokens of msg.sender
+	Reset the index of msg.sender (used for computing interests)
+	require(LP reserve balance >= amountToRedeem)
+	Update state of the reserve on redeem action
+	Transfer the amountToRedeem to msg.sender
+}
+```
+
+The redeem function takes as input one parameter: the address of the reserve from which the msg.sender want to redeem his tokens previously deposited.
+Firstly, the function fetches the amount of aTokens for the reserve and computes the interests accrued: the sum of these values is called "amountToRedeem".
+Next, it checks if the amountToRedeem is greater than zero and if the msg.sender's health factor is above the threshold (after the redeem action). Last check is verifying the LP reserve has enough liquidity to allow the msg.sender to redeem his tokens.
+If these checks pass, the function burns the msg.sender's aTokens, it resets the user index (used for computing accrued interests) and modifies the state of the reserve by updating the new interest rate according to the new balance.
+Finally, the function directly transfers the amountToRedeem to the msg.sender.
+
+When a user decides to redeem his tokens from a reserve, if these tokens are not used as collateral then the user's health factor does not change, else it changes and the redeem action is correctly executed only if the health factor does not drop under a threshold.
+
+#### 4.5.1 Differences between redeem functions
+The main difference between the function proposed in this implementation and the original implementation of Aave, is that in this implementation it is possible only to redeem all tokens of a reserve, while in Aave it is possible to specify the amount to redeem (by passing to the function ad additional parameter).
+
+Another difference is that in Aave is possible to redirect the accrued interests on aTokens towards a particular address, while in this implementation the accrued interests are cumulated in the owner user of aTokens.
+
+
 ### 4. Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
