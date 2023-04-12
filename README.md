@@ -174,9 +174,9 @@ Finally, the function directly transfers the amountToRedeem to the msg.sender.
 When a user decides to redeem his tokens from a reserve, if these tokens are not used as collateral then the user's health factor does not change, else it changes and the redeem action is correctly executed only if the health factor does not drop under a threshold.
 
 #### 4.5.1 Differences between redeem functions
-The main difference between the function proposed in this implementation and the original implementation of Aave, is that in this implementation it is possible only to redeem all tokens of a reserve, while in Aave it is possible to specify the amount to redeem (by passing to the function ad additional parameter).
+The main difference between the function proposed in this implementation and the original implementation of Aave is that in this implementation it is possible only to redeem all own tokens from a reserve, while in Aave it is possible to specify the exact amount to redeem (by passing to the function an additional parameter to the [redeem function](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L218)). In Aave, this function must be called on the ["ATokens.sol"](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol) contract (the contract handling the asset to redeem), while in ProtoAave the redeem function must be called on the LendingPool contract.
 
-Another difference is that in Aave is possible to redirect the accrued interests on aTokens towards a particular address, while in this implementation the accrued interests are cumulated in the owner user of aTokens.
+Another difference is that in Aave, when the redeem action is execute, is possible to redirect the accrued interests on aTokens towards a particular address by calling [this fuction](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L179), while in this implementation the accrued interests are cumulated in the owner user of aTokens.
 
 
 ### 4. Functions for computing users' data
