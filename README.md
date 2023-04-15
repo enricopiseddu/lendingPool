@@ -322,7 +322,7 @@ Tests are:
 <hr />
 
 
-#### 5.2.2 Deposit function
+#### 5.2.2 Tests on deposit function
 **_Initialization_**   The owner deploys a contract representing a token "T1" ERC20 with an initial balance of 10.000. Next, the owner transfers to Alice all 10.000 T1 tokens. Finally, the owner deploys the Lending Pool contranct and adds the token T1.
 
 **_Proposed tests_**
@@ -333,7 +333,7 @@ Tests are:
 
 <hr />
 
-#### 5.2.3 Borrow function
+#### 5.2.3 Tests on borrow function
 **_Initialization_**   The owner deploys two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 each one. Next, the owner adds T1 and T2 in the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to Bob. Finally Bob deposits all his T2 tokens to the Lending Pool.
 
 **_Proposed tests_**
@@ -376,6 +376,19 @@ Tests are:
 After a certain amount of time, interest for T1 and T2 is shown.
 
 The interests that Alice must pay for the borrow, must be greater for T2 tokens because the T2 reserve is OVERUSED.
+
+<hr />
+
+
+#### 5.2.7 Tests on redeem function
+**_Initialization_**   The owner deploys the LP and three contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 T1 and 10.000 T2. Next, the owner adds T1 and T2 to the LP, he distributes 10.000 T1  to Alice and 10.000 T2 to LP. 
+
+**_Proposed tests_**
+- Alice has no liquidity deposited in the LP. When she tries to redeem 10.000 T2 the transaction must fail.
+- Alice has borrowed 1.000 T2 using 10.000 T1 as collateral. When she tries to redeem 10.000 T1 the transaction must fail.
+- Alice has deposited 10.000 T1 in the LP not as collateral: since she has no borrows pending, she can redeem all these tokens.
+- Alice has deposited 10.000 T1 in the LP  as collateral: since she has no borrows pending, she can redeem all these tokens.
+
 
 <hr />
 
