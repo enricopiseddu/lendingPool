@@ -381,13 +381,24 @@ The interests that Alice must pay for the borrow, must be greater for T2 tokens 
 
 
 #### 5.2.7 Tests on redeem function
-**_Initialization_**   The owner deploys the LP and three contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 T1 and 10.000 T2. Next, the owner adds T1 and T2 to the LP, he distributes 10.000 T1  to Alice and 10.000 T2 to LP. 
+**_Initialization_**   The owner deploys the LP and two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 T1 and 10.000 T2. Next, the owner adds T1 and T2 to the LP, he distributes 10.000 T1 to Alice and 10.000 T2 to LP. 
 
 **_Proposed tests_**
 - Alice has no liquidity deposited in the LP. When she tries to redeem 10.000 T2 the transaction must fail.
 - Alice has borrowed 1.000 T2 using 10.000 T1 as collateral. When she tries to redeem 10.000 T1 the transaction must fail.
 - Alice has deposited 10.000 T1 in the LP not as collateral: since she has no borrows pending, she can redeem all these tokens.
 - Alice has deposited 10.000 T1 in the LP  as collateral: since she has no borrows pending, she can redeem all these tokens.
+
+
+<hr />
+
+#### 5.2.8 Tests on repay function
+**_Initialization_**   The owner deploys the LP and two contracts representing ERC20 tokens: "T1" and "T2" with an initial balance of 10.000 T1 and 20.000 T2. Next, the owner adds T1 and T2 to the LP, he distributes 10.000 T1 to Alice, and 10.000 T2 to LP and Bob. 
+
+**_Proposed tests_**
+- Alice has no debts, and when Bob tries to repay her, the transaction must fail.
+- Alice deposited 10.000 T1 as collateral and then borrowed 5.000 T2, but next because of the price fluctuation of T1 she is under liquidation: when Bob tries to repay her debt, the transaction must fail.
+- Alice deposited 10.000 T1 as collateral and then borrowed 5.000 T2: at the moment she is not under liquidation. Bob can completely repay her debt (amount borrowed by Alice + fee + interests).  
 
 
 <hr />
