@@ -58,6 +58,8 @@ contract LendingPool is Ownable{
     uint256 public constant ORIGINATION_FEE_PERCENTAGE = 0.0025 * 1e18; // express in wad, it is the fixed fee applied to all borrows (0.0025%)
     uint256 public constant SECONDS_PER_YEAR = 31536000;
 
+    uint256 public constant LIQUIDATION_BONUS = 5; //express in percentage
+
 
     mapping(address=>mapping(address=>uint256)) public aTokens; //from user to reserve to numberOfmintedTokens
     mapping(address=>UserData) public users; 
@@ -688,6 +690,8 @@ contract LendingPool is Ownable{
         //msg.sender can redeem all his tokens + accrued interests
         (uint256 aTokensWithoutInterests, uint256 amountToRedeem, ,) = cumulateBalanceInternal(msg.sender, _reserve);
 
+        require(amountToRedeem > 0, "Msg.sender has nothing to redeem");
+
         require(balanceDecreaseAllowed(_reserve, msg.sender, aTokensWithoutInterests), "You can not redeem by the reserve");
 
         //burn all aTokens
@@ -717,4 +721,145 @@ contract LendingPool is Ownable{
         reserves[_reserve].variableBorrowRate = newVariableRate;
         reserves[_reserve].lastUpdateTimestamp = block.timestamp;
     }
+
+    struct LiquidationVars{
+        uint256 healthFactor;
+        uint256 collateralBalance;
+        uint256 compoundedBorrowBalance;
+        uint256 interests;
+        uint256 maximumAmountToLiquidate;
+        uint256 actualAmountToLiquidate;
+        uint256 maximumCollateralToLiquidate;
+        uint256 principalAmountNeeded;
+        uint256 fee;
+        uint256 liquidatedCollateralForFee;
+        uint256 feeLiquidated;
+    }
+
+    function liquidation(address _collateral, address _reserveToRepay, address _userToLiquidate, uint256 _amountToRepay) public{
+        
+        LiquidationVars memory vars;
+        ERC20 reserveCollateral = ERC20(_collateral);
+        ERC20 reserveToRepay = ERC20(_reserveToRepay);
+
+        //Check if user is under liquidation
+        (,,,,,, vars.healthFactor) = calculateUserGlobalData(_userToLiquidate);
+        require(vars.healthFactor < HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "User can not be liquidated: his HF >= 1");
+
+        //Check if user has deposited collateral
+        vars.collateralBalance = aTokens[_userToLiquidate][_collateral];
+        require(vars.collateralBalance>0, "User has not deposited collateral in _collateral");
+
+        //Check if user uses _collateral as collateral
+        require(users[_userToLiquidate].usesReserveAsCollateral[_collateral], "User does not use the reserve as collateral");
+
+        //Check if user has an active borrow on _reserveToRepay
+        (, vars.compoundedBorrowBalance, vars.interests) = getUserBorrowBalances(_reserveToRepay, _userToLiquidate);
+        require(vars.compoundedBorrowBalance > 0, "User has not an active borrow in _reserveToRepay");
+
+        //Compute the maximum amount that can be liquidated (50% of the borrow)
+        vars.maximumAmountToLiquidate = vars.compoundedBorrowBalance.mul(50).div(100); 
+
+        vars.actualAmountToLiquidate = (_amountToRepay > vars.maximumAmountToLiquidate) ? vars.maximumAmountToLiquidate : _amountToRepay;
+
+        (vars.maximumCollateralToLiquidate, vars.principalAmountNeeded) = calculateAvaiableCollateralToLiquidate(_collateral, _reserveToRepay, vars.actualAmountToLiquidate, vars.collateralBalance);
+
+        vars.fee = users[_userToLiquidate].fees[_reserveToRepay];
+        
+        if (vars.fee > 0){
+            (vars.liquidatedCollateralForFee, vars.feeLiquidated) = calculateAvaiableCollateralToLiquidate(_collateral, _reserveToRepay, vars.fee, vars.collateralBalance.sub(vars.maximumCollateralToLiquidate));
+        }
+
+        if (vars.principalAmountNeeded < vars.actualAmountToLiquidate) {
+            vars.actualAmountToLiquidate = vars.principalAmountNeeded;
+        }
+
+        // check if LP has enough liquidity to send to liquidator
+        require(reserveCollateral.balanceOf(address(this)) > vars.maximumCollateralToLiquidate, "LP has not enough liquidity");
+
+        //Update state on liquidation
+        updateStateOnLiquidation(_reserveToRepay, _collateral, _userToLiquidate, vars.actualAmountToLiquidate, vars.maximumCollateralToLiquidate, vars.feeLiquidated,
+            vars.liquidatedCollateralForFee, vars.interests);
+
+        //Burn aTokens liquidated
+        aTokens[_userToLiquidate][_collateral] -= vars.maximumCollateralToLiquidate;
+
+        //Transfer to liquidator the amount of collateral purchased
+        reserveCollateral.transfer(msg.sender, vars.maximumCollateralToLiquidate.add(vars.liquidatedCollateralForFee));
+
+        //Transfer to LP the amount repaid by the liquidator: liquidator must allow in ERC20 method
+        reserveToRepay.transferFrom(msg.sender, address(this), vars.actualAmountToLiquidate.add(vars.feeLiquidated));
+
+    }
+
+    function calculateAvaiableCollateralToLiquidate(address _collateral, address _principal, uint256 _purchaseAmount, uint256 _userCollateralBalance) internal view 
+        returns(uint256 collateralAmount, uint256 principalNeeded){
+
+        uint256 collateralPrice = reserves[_collateral].price;
+        uint256 principalPrice = reserves[_principal].price;
+
+        uint256 maxAmountCollateralToLiquidate= (principalPrice
+                    .mul(_purchaseAmount)
+                    .div(collateralPrice)
+                    .mul(LIQUIDATION_BONUS) // 5%
+                    .div(100))
+                    .add(
+                        principalPrice
+                        .mul(_purchaseAmount)
+                        .div(collateralPrice)
+                    ); //liquidator obtains the respective amount of collateral + bonus 5%
+
+        if (maxAmountCollateralToLiquidate > _userCollateralBalance){
+            collateralAmount = _userCollateralBalance;
+            principalNeeded = collateralPrice
+                .mul(collateralAmount)
+                .div(principalPrice)
+                .mul(100)
+                .div(LIQUIDATION_BONUS);
+        }
+        else{
+            collateralAmount = maxAmountCollateralToLiquidate;
+            principalNeeded = _purchaseAmount;
+        }
+
+    }
+
+    function updateStateOnLiquidation(address _principalReserve, address _collateralReserve, address _userToLiquidate,
+        uint256 _amountToLiquidate, uint256 _collateralToLiquidated, uint256 _feeLiquidated, uint256 _liquidatedCollateralForFee, uint256 _interests) internal{
+        
+        //update principal reserve
+        updateIndexes(_principalReserve);
+        reserves[_principalReserve].totalVariableBorrows += _interests; //add interests
+        reserves[_principalReserve].totalVariableBorrows -= _amountToLiquidate; //subtract the amount liquidated
+
+        //update collateral reserve
+        updateIndexes(_collateralReserve);
+
+        //update the user's state
+        users[_userToLiquidate].numberOfTokensBorrowed[_principalReserve] += _interests; //add interests
+        users[_userToLiquidate].numberOfTokensBorrowed[_principalReserve] -= _amountToLiquidate; //subtract the amount liquidated
+
+        users[_userToLiquidate].lastVariableBorrowCumulativeIndex[_principalReserve] = reserves[_principalReserve].cumulatedVariableBorrowIndex;
+        users[_userToLiquidate].fees[_principalReserve] -= _feeLiquidated;
+        users[_userToLiquidate].lastUpdateTimestamp[_principalReserve] = block.timestamp;
+
+        //update interest rate for principal reserve
+        updateInterestRatesAndTimestamp(_principalReserve, _amountToLiquidate, 0);
+
+        //update interest rate for collateral reserve
+        updateInterestRatesAndTimestamp(_collateralReserve, 0, _collateralToLiquidated.add(_liquidatedCollateralForFee));
+    
+
+    }
+
+
+    function updateInterestRatesAndTimestamp(address _reserve, uint256 _liquidityAdded, uint256 _liquidityTaken) internal{
+        uint256 liquidityAvailable = ERC20(_reserve).balanceOf(address(this));
+        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(liquidityAvailable.add(_liquidityAdded).sub(_liquidityTaken), reserves[_reserve].totalVariableBorrows);
+
+        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
+        reserves[_reserve].variableBorrowRate = newVariableRate;
+        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+    }
+
 }
