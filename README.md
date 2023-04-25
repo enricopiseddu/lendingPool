@@ -179,6 +179,40 @@ The main difference between the function proposed in this implementation and the
 Another difference is that in Aave, when the redeem action is execute, is possible to redirect the accrued interests on aTokens towards a particular address by calling [this fuction](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L179), while in this implementation the accrued interests are cumulated in the owner user of aTokens.
 
 
+### 4.6 Liquidation function
+The liquidation function is summarized by the follow pseudocode:
+```
+liquidation (address collateral, address reserveToRepay, address userToRepay, uint256 amountToRepay){
+	require( userToRepay has a health factor under the threshold )
+	require( userToRepay has deposited in the reserve called "collateral" )
+	require( userToRepay uses the reserve called "collateral" as collateral )
+	require( userToRepay has an active borrow in the "reserveToRepay" )
+	
+	Compute the maximum amount to liquidate of tokens in "reserveToRepay" )
+	Compute the maximum amount of collateral to liquidate, including the bonus )
+	
+	require( LP has enough liquidity in the reserve "collateral" )
+	
+	Update the state of reserves and user under liquidation
+	
+	Transfer to liquidator (msg.sender) the amount of collateral liquidated, including bonus
+	Transfer to reserveToRepay of the LendingPool the amount repaid by the liquidator
+	
+}
+```
+
+The liquidation function takes as input three parameter:
+
+- collateral: is the address of the reserve from which the liquidator (msg.sender) wants to buy at a discount price (i.e. obtaining a bonus)
+- reserveToRepay: is the address of the reserve that the liquidator wants to repay and from which the user under liquidation has borrowed
+- userToRepay: is the address of the user under liquidation
+- amountToRepay: is the maximum amount of tokens the liquidator wants to repay
+
+TODO
+
+#### 4.5.1 Differences between liquidation functions
+TODO
+
 ### 4. Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
