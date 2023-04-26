@@ -201,17 +201,26 @@ liquidation (address collateral, address reserveToRepay, address userToRepay, ui
 }
 ```
 
-The liquidation function takes as input three parameter:
+The liquidation function takes as input four parameters:
 
 - collateral: is the address of the reserve from which the liquidator (msg.sender) wants to buy at a discount price (i.e. obtaining a bonus)
 - reserveToRepay: is the address of the reserve that the liquidator wants to repay and from which the user under liquidation has borrowed
 - userToRepay: is the address of the user under liquidation
 - amountToRepay: is the maximum amount of tokens the liquidator wants to repay
 
-TODO
+First of all, the function checks if the userToRepay is under liquidation (his health factor under the liquidation threshold), if the user has deposited collateral in the reserve called "collateral" and if he has an active borrow in the reserveToRepay. 
+
+Next, the function computes the maximum amount of tokens borrowed (maximum 50%) that can be repaid by the liquidator, and computes the amount of collateral tokens - including bonus - that have to be sold to the liquidator.
+Afterwards, in order to repay the liquidator, the function checks if the Lending Pool has enough liquidity in the collateral reserve, then it update the state of the user under liquidation and reserves by computing the new interest rates.
+
+Finally, the function transfers to the liquidator the amount of tokens of type "collateral", including the bonus, and transfers to the reserve "reserveToRepay" the amount of tokens used by the liquidator to buy the collateral at a discount price.
 
 #### 4.5.1 Differences between liquidation functions
-TODO
+There are two main difference between the liquidation function of Aave and that proposed in this implementation. 
+
+The first difference is that in Aave the liquidator decides how to receive the collateral liquidated: he can receive directly the assets (tokens ERC20) or he can receive the amount of "aTokens", by setting an additional boolean parameter, called "receiveATokens" to the liquidation function. In this implementation, it is possible to repay the liquidator only transfer directly him the asset by calling the transfer method of the ERC20 contract, without receiving the Tokens.
+
+The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
 
 ### 4. Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
