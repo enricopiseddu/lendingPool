@@ -66,7 +66,7 @@ contract LendingPool is Ownable{
 
 
     modifier onlyPriceOracle(){
-        require(msg.sender == priceOracle, "Only Oracle can modify prices of tokens");
+        require(msg.sender == priceOracle, "");
         _;
     }
 
@@ -79,7 +79,7 @@ contract LendingPool is Ownable{
     }
 
     function setPrice(address _reserve, uint256 _price) public onlyPriceOracle{
-        require(_price > 0, "Price of token can not be zero");
+        require(_price > 0, "");
         reserves[_reserve].price = _price;
     }
 
@@ -93,7 +93,7 @@ contract LendingPool is Ownable{
             }
         }
 
-        require(!reserveAlreadyExists, "Reserve already exists!");
+        require(!reserveAlreadyExists, "");
 
         reserves[_adr] =  ReserveData(10**27,10**27,0,0,0,0,0,1,0,75,95);
         reserves_array.push(_adr);
@@ -106,9 +106,9 @@ contract LendingPool is Ownable{
         
         ERC20 tokenToDeposit = ERC20(_reserve);
 
-        require(_amount > 0, "Amount to deposit must be greater than 0");
+        require(_amount > 0, "");
 
-        require(tokenToDeposit.allowance(msg.sender, address(this)) == _amount, "Msg sender must allow the deposit of ERC20");
+        require(tokenToDeposit.allowance(msg.sender, address(this)) == _amount, "");
         
         tokenToDeposit.transferFrom(msg.sender, address(this), _amount);
 
@@ -194,9 +194,9 @@ contract LendingPool is Ownable{
 
         ERC20 tokenToBorrow = ERC20(_reserve);
 
-        require(_amount > 0, "Amount to borrow must be greater than 0");
+        require(_amount > 0, "");
 
-        require( tokenToBorrow.balanceOf(address(this)) >= _amount, "Not enough liquidity for the borrow");
+        require( tokenToBorrow.balanceOf(address(this)) >= _amount, "");
         
         (
             ,
@@ -208,17 +208,17 @@ contract LendingPool is Ownable{
             vars.healthFactorUser
         ) = calculateUserGlobalData(msg.sender);
 
-        require(vars.userCollateralBalanceETH > 0, "The collateral balance is 0");
+        require(vars.userCollateralBalanceETH > 0, "");
 
         require(
             vars.healthFactorUser >= HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
-            "The borrower can already be liquidated so he cannot borrow more"
+            ""
         );
 
         //calculate fees
         vars.borrowFee = _amount.wadMul(ORIGINATION_FEE_PERCENTAGE);
         
-        require(vars.borrowFee > 0, "The amount to borrow is too small");
+        require(vars.borrowFee > 0, "");
         
         //calculate collateral needed
         vars.amountOfCollateralNeededETH = calculateCollateralNeededInETH(
@@ -232,7 +232,7 @@ contract LendingPool is Ownable{
         
         require(
             vars.amountOfCollateralNeededETH <= vars.userCollateralBalanceETH,
-            "There is not enough collateral to cover a new borrow"
+            ""
         );
         
         //update state for borrow action
@@ -507,10 +507,10 @@ contract LendingPool is Ownable{
     function setuserUseReserveAsCollateral(address _reserve, bool _useAsCollateral) public{
         uint256 underlyingBalance = aTokens[msg.sender][_reserve];
 
-        require(underlyingBalance > 0, "User can not set the use of collateral because does not have any liqidity deposited in this reserve");
+        require(underlyingBalance > 0, "");
 
         //check if a decrease of collateral is allowed (i.e. health factor after this action must be > 1)
-        require(balanceDecreaseAllowed(_reserve, msg.sender, underlyingBalance), "User can not set this reserve as collateral because this brings his health factor < 1");
+        require(balanceDecreaseAllowed(_reserve, msg.sender, underlyingBalance), "");
 
         users[msg.sender].usesReserveAsCollateral[_reserve] = _useAsCollateral;
 
@@ -610,14 +610,14 @@ contract LendingPool is Ownable{
 
         //check if user is not under liquidation
         ( ,,,,,, uint256 healthFactor) = calculateUserGlobalData(_userToRepay);
-        require(healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "User can not be repaid: he is under liquidation");
+        require(healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "");
         
         //check if user has pending borrows in the reserve
-        require(compoundedBalance > 0, "User can not be repaid: he has not borrows in the reserve");
+        require(compoundedBalance > 0, "");
 
         //only a complete repayment is allowed
-        require(_amountToRepay == compoundedBalance, "Only a complete repayment is allowed");
-        require(tokenToRepay.allowance(msg.sender, address(this)) == compoundedBalance, "Msg. sender must approve LP to transfer assets");
+        require(_amountToRepay == compoundedBalance, "");
+        require(tokenToRepay.allowance(msg.sender, address(this)) == compoundedBalance, "");
 
         //update state on repay
         updateStateOnRepay(_reserve, _userToRepay, _amountToRepay, fee, interests);
@@ -690,9 +690,9 @@ contract LendingPool is Ownable{
         //msg.sender can redeem all his tokens + accrued interests
         (uint256 aTokensWithoutInterests, uint256 amountToRedeem, ,) = cumulateBalanceInternal(msg.sender, _reserve);
 
-        require(amountToRedeem > 0, "Msg.sender has nothing to redeem");
+        require(amountToRedeem > 0, "");
 
-        require(balanceDecreaseAllowed(_reserve, msg.sender, aTokensWithoutInterests), "You can not redeem by the reserve");
+        require(balanceDecreaseAllowed(_reserve, msg.sender, aTokensWithoutInterests), "");
 
         //burn all aTokens
         aTokens[msg.sender][_reserve] = 0;
@@ -701,7 +701,7 @@ contract LendingPool is Ownable{
         usersIndexes[msg.sender][_reserve] = 0;
 
         //check reserve has enough liquidity to redeem
-        require(tokenToRedeem.balanceOf(address(this)) >= amountToRedeem, "The reserve has not enough liquidity");
+        require(tokenToRedeem.balanceOf(address(this)) >= amountToRedeem, "");
 
         updateStateOnRedeem(_reserve, amountToRedeem);
 
@@ -744,14 +744,14 @@ contract LendingPool is Ownable{
 
         //Check if user is under liquidation
         (,,,,,, vars.healthFactor) = calculateUserGlobalData(_userToLiquidate);
-        require(vars.healthFactor < HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "User can not be liquidated: his HF >= 1");
+        require(vars.healthFactor < HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "");
 
         //Check if user has deposited collateral
         vars.collateralBalance = aTokens[_userToLiquidate][_collateral];
-        require(vars.collateralBalance>0, "User has not deposited collateral in _collateral");
+        require(vars.collateralBalance>0, "");
 
         //Check if user uses _collateral as collateral
-        require(users[_userToLiquidate].usesReserveAsCollateral[_collateral], "User does not use the reserve as collateral");
+        require(users[_userToLiquidate].usesReserveAsCollateral[_collateral], "");
 
         //Check if user has an active borrow on _reserveToRepay
         (, vars.compoundedBorrowBalance, vars.interests) = getUserBorrowBalances(_reserveToRepay, _userToLiquidate);
