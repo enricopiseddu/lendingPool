@@ -222,7 +222,7 @@ The first difference is that in Aave the liquidator decides how to receive the c
 
 The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
 
-### 4. Functions for computing users' data
+### 4.7 Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
 
@@ -263,6 +263,23 @@ function getUserBorrowBalances(address user, address reserve) returns(uint256, u
 <hr />
 
 
+```
+function cumulateBalanceInternal(address user, address reserve) returns(uint256, uint256, uint256, uint256)
+```
+
+- Given a user and a reserve, it returns 4 parameters: the previous balance of aTokens, the new amount of aTokens (with accrued interests), the accrued interests and the index of the user.
+<hr />
+
+
+```
+function balanceOfAtokens(address user, address reserve) returns(uint256)
+```
+
+- Given a user and a reserve, it returns the amount of aTokens of the user, including interests accrued.
+<hr />
+
+
+
 ### 4. Other functions called by users, the oracle and the owner
 <hr />
 
@@ -276,7 +293,7 @@ In Aave's implementation, this function does not exist. In this work, it simulat
 <hr />
 
 ```
-function addReserve(address reserve)
+function addReserve(address reserve) onlyOwner
 ```
 - This function allows the creation of a new reserve with default data. The only input parameter is the address of the contract ERC20 that handles tokens. Only the owner can add a reserve.
 
@@ -307,6 +324,14 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 <hr />
 
 
+
+```
+function calculateAvaiableCollateralToLiquidate(address collateral, address principal, uint256 purchaseAmount, uint256 userCollateralBalance) returns(uint256 collateralAmount, uint256 principalNeeded)
+```
+
+- This function takes in input 4 parameters: the address of the reserve collateral, the address of the principal reserve, the purchase amount of collateral and the collateral balance of the user to liquidate. It returns the collateral amount that can be liquidated and the amount of principal token needed to repay during the liquidation.
+<hr />
+
 ### 4. Functions for interests and interest rates calculus.
 In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
@@ -316,12 +341,13 @@ The interest rate for a reserve depends on:
 
 Both Aave and this work compute time as difference between block timestamps.
 
-The follow functions provide the interests and interest rate calculus:
+The follow functions provide the interests and interest rate calculus and the respective updating:
 ```
 function updateIndexes(address reserve)
 function calculateLinearInterest(uint256 rate, uint256 lastUpdateTimestamp) return(uint256)
 function calculateCompoundedInterest(uint256 rate, uint256 lastUpdateTimestamp) return(uint256)
 function calculateInterestRates(uint256 availableLiquidity, uint256 totalBorrows) return(uint256 currentLiquidityRate, uint256 currentVariableBorrowRate)
+function updateInterestRatesAndTimestamp(address _reserve, uint256 _liquidityAdded, uint256 _liquidityTaken)
 ```
 
 ## 5. Evaluation
