@@ -1,12 +1,14 @@
 # A minimal implementation of Aave
 
 ## 1. Introduction and goal
-[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi) based on the Lending Pool (LP) concept. LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing.
+[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing. In addition to these actions, Aave provides to users repayment, redeem and liquidation functionalities. Another Aave's features is the implementation of flash loans: they are loans where collateral is not used because the amount of value borrowed must be returned in the same transaction.
 
-Although Aave provides a wide range of functions, the goal of this work is to summarize and focus on the main functions of Aave, which are “borrow” and “deposit”, highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
+Although Aave provides a wide range of features, the goal of this work is to present a minimal implementation of Aave that summarizes and focuses on the main functions of Aave (deposit, borrow, redeem, repay and liquidation) highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
 
 ## 2. Background
-This section provides an overview of Lending Pools, their functionalities, and their assets.
+This section provides an overview of Decentralized Finance, Lending Pools, their functionalities, and their assets.
+
+**_Decentralized Finance_** DeFi is a financial system based and living on blockchain technology. In DeFi, contrary to classical finance, all actions are performed by users - that have direct and total control of their resources - without of need for any trusted central authority.
 
 **_Lending Pools and functionalities_**  In DeFi, a LP can be considered a smart contract towards which users can send transactions in order to lend and borrow crypto-assets, trusting the contract without a central entity. In general, a LP contains different reserves represented by other smart contracts handling these assets. 
 On the one hand, users that deposit their assets increase the liquidity of the reserve (and so of the LP), on the other hand, this liquidity can be borrowed by other users that must deposit – in the lending pool – collateral to cover their borrows. 
