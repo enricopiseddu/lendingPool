@@ -1,7 +1,9 @@
 # A minimal implementation of Aave
 
 ## 1. Introduction and goal
-[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing. In addition to these actions, Aave provides to users repayment, redeem and liquidation functionalities. Another Aave's features is the implementation of flash loans: they are loans where collateral is not used because the amount of value borrowed must be returned in the same transaction.
+[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. Its market capitalization, given by 
+
+LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing. In addition to these actions, Aave provides to users repayment, redeem and liquidation functionalities. Another Aave's features is the implementation of flash loans: they are loans where collateral is not used because the amount of value borrowed must be returned in the same transaction.
 
 Although Aave provides a wide range of features, the goal of this work is to present a minimal implementation of Aave that summarizes and focuses on the main functions of Aave (deposit, borrow, redeem, repay and liquidation) highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
 
@@ -255,11 +257,12 @@ After these sanity checks are performed, the function transfer the amount to bor
 Then, the code of the receiver contract is executed (call to executeOperation): after its operation, this code should transfer to the caller the entire amount borrowed and the fee.
 Finally, the function checks if the flash loan is completely repaid (including fee): if true, the transaction is correctly executed and the flash loan is correctly performed, if false the transaction is completely reverted.
 
-As seen, performing a flash loan does not require the user deposits collaterals or he has a sufficient health factor. The only constraint is that the amount borrowed must be returned (including the fee) within the same transaction, otherwise, the flash loan is reverted.
+As seen, performing a flash loan does not require the user deposits collateral or he has a sufficient health factor. The only constraint is that the amount borrowed must be returned in the same currency (including the fee) within the same transaction, otherwise, the flash loan is reverted.
 
 
-#### 4.5.1 Differences between flash loan functions
-...
+#### 4.7.1 Differences between flash loan functions
+The main difference is that flash loans are available in Aave implementation, while in this work, they are not included in the lending pool but summarized and studied apart.
+Since in Aave flash loans are included, a part of the fee accrued is distributed to lenders, while the other part is taken by the protocol itself: this feature notices in the respective [function](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L860).
 
 
 ### 4.8 Functions for computing users' data
@@ -542,14 +545,16 @@ When using Aave, users can decide to open a borrow position with stable or varia
 
 In Aave's implementation, this difference notices in the [borrow function](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L388). This function takes in input an integer called "interestRateMode": this parameter set to zero indicates that the _msg.sender_ wants to borrow at a stable rate, and set to 1 at a variable rate.
 
+Since Aave implements both variable and stable rates, it allows users to swap the rate mode: those who opened a stable borrow position can switch it to a variable and vice versa, by calling a particular [function](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L648). 
+
 **_Lending Pool configuration_**
 In Aave it is possible to configure each reserve, in particular, each of them can be actived, freezed and enabled as collateral. An active and unfreezed reserve accepts deposits and borrows, while a freezed reserve accepts only repay and liquidation actions. These actions, in Aave, can be executed by a smart contract called [“Lending Pool Configurator”](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolConfigurator.sol). In this work, these actions are unnecessary because once a reserve is added, it is ready to accept deposits (also as collateral) and borrows actions.
 
 
 ## 7. Conclusions
-In this work, we have seen an overview of Lending Pools, how users can use them in order to handle their crypto-assets (ERC20 tokens in this case), and how Lending Pools help users in lending and borrowing actions without explicitly trusting each other, but trusting the smart contract that handles the LP.
-ProtoAave has been developed and has been proposed as a minimal implementation of Aave Protocol. 
+In this work, we have seen an overview of Lending Pools, how users can use them in order to handle their crypto-assets (ERC20 tokens in this case), and how Lending Pools help users in specific actions (deposit, borrow, repay, redeem and liquidation) without explicitly trusting each other, but trusting the smart contract that handles the LP. We have also seen the definition and a minimal implementation of flash loans that allow users to borrow crypto-assets without deposit collateral.
 
-It has highlighted when and how the deposit and borrow action can be executed, how users can manage their collaterals according to their health factors, and how interests for borrowers depend on time and on the utilization rate of a reserve.
+ProtoAave has been developed and has been proposed as a minimal implementation of Aave Protocol, it has highlighted when the actions can be executed, how users can manage their collaterals according to their health factors, and how interests for borrowers and lenders depend on time and on the utilization rate of a reserve.
 
-This work differs from the original implementation of Aave, and differences have been shown. In the evaluation phase, some experiments have been shown using different libraries and including different cases in order to demonstrate the correctness of transactions. 
+Although this work differs from the original implementation of Aave, and differences have been shown, it provides a simpler way to understand the role of Lending Pools in Decentralized Finance.
+In the evaluation phase, some experiments have been shown using different libraries and including different cases in order to demonstrate the correctness of transactions. 
