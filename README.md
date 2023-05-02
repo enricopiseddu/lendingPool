@@ -36,7 +36,7 @@ These smart contracts are developed thanks to [Remix IDE](https://remix.ethereum
 
 ## 4. Main features of this work
 
-The work proposed is called “ProtoAave”. It is a minimal prototype of Aave original implementation that proposes minimal actions (mostly deposit and borrow actions) in order to understand how the state of the Lending Pool changes in response to specific transactions sent by users.
+The work proposed is called “ProtoAave”. It is a minimal prototype of Aave original implementation that proposes minimal actions about deposit, borrow, redeem, repay and liquidation, in order to understand how the state of the Lending Pool changes in response to specific transactions sent by users.
 
 The following subchapters focus mainly on actors and their actions towards the Lending Pool contract of this work. All formulas that calculate interest rates, health factor, the amount of collateral needed to open a new borrow position, etc, have been taken from the original Aave's implementation.
 
@@ -224,7 +224,45 @@ The first difference is that in Aave the liquidator decides how to receive the c
 
 The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
 
-### 4.7 Functions for computing users' data
+
+
+### 4.7 Flash loan function
+The flash loan function is summarized by the follow pseudocode:
+```
+flashLoan (address receiver, address reserve, uint256 amountToBorrow){
+	Get the liquidity after the loan
+	require( liquidity >= amountToBorrow)
+	Compute the fee for the loan
+	require( fee > 0 )
+	
+	Transfer to receiver contract the amountToBorrow
+	Call the "executeOperation" method on the receiver contract
+	
+	require( liquidity after the loan == liquidity before the loan + fee )
+	
+}
+```
+
+It is important that the receiver contract implements a particular interface called "IFlashLoanReceiver.sol", so it must override the function "executeOperation" in order the FlashLoan contract calls it correctly.
+
+The flash loan function takes as input three parameters:
+- the receiver: it is the address of the contract that receives the amount borrowed
+- the reserve: it is the ERC20 contract address from which the msg.sender wants to borrow
+- the amountToBorrow: it is the amount of ERC20 tokens that the msg.sender wants to borrow
+
+First of all, the function checks if the contract has enough liquidity in the reserve to perform the flash loan. Next, it computes the fee for the flash loan, which is a fixed percentage calculated on the amount to borrow, and checks it is greater than zero.
+After these sanity checks are performed, the function transfer the amount to borrow to the contract specified by the msg.sender.
+Then, the code of the receiver contract is executed (call to executeOperation): after its operation, this code should transfer to the caller the entire amount borrowed and the fee.
+Finally, the function checks if the flash loan is completely repaid (including fee): if true, the transaction is correctly executed and the flash loan is correctly performed, if false the transaction is completely reverted.
+
+As seen, performing a flash loan does not require the user deposits collaterals or he has a sufficient health factor. The only constraint is that the amount borrowed must be returned (including the fee) within the same transaction, otherwise, the flash loan is reverted.
+
+
+#### 4.5.1 Differences between flash loan functions
+...
+
+
+### 4.8 Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
 <hr />
 
