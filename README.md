@@ -219,7 +219,7 @@ Afterwards, in order to repay the liquidator, the function checks if the Lending
 
 Finally, the function transfers to the liquidator the amount of tokens of type "collateral", including the bonus, and transfers to the reserve "reserveToRepay" the amount of tokens used by the liquidator to buy the collateral at a discount price.
 
-#### 4.5.1 Differences between liquidation functions
+#### 4.6.1 Differences between liquidation functions
 There are two main difference between the liquidation function of Aave and that proposed in this implementation. 
 
 The first difference is that in Aave the liquidator decides how to receive the collateral liquidated: he can receive directly the assets (tokens ERC20) or he can receive the amount of "aTokens", by setting an additional boolean parameter, called "receiveATokens" to the liquidation function. In this implementation, it is possible to repay the liquidator only transfer directly him the asset by calling the transfer method of the ERC20 contract, without receiving the Tokens.
@@ -232,7 +232,7 @@ The second difference is that in Aave it is possible to specify - for each reser
 The flash loan function is summarized by the follow pseudocode:
 ```
 flashLoan (address receiver, address reserve, uint256 amountToBorrow){
-	Get the liquidity after the loan
+	Get the liquidity before the loan
 	require( liquidity >= amountToBorrow)
 	Compute the fee for the loan
 	require( fee > 0 )
@@ -240,6 +240,7 @@ flashLoan (address receiver, address reserve, uint256 amountToBorrow){
 	Transfer to receiver contract the amountToBorrow
 	Call the "executeOperation" method on the receiver contract
 	
+	Get the liquidity after the loan
 	require( liquidity after the loan == liquidity before the loan + fee )
 	
 }
