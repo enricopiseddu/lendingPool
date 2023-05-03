@@ -537,9 +537,8 @@ Both of them implement the interface ["IFlashLoanReceiver"](https://github.com/e
 Finally, the owner transfers to the FlashLoan contract 50.000 tokens, to the GoodReceiver contract 50.000 tokens and to the badReceiver 50.000 tokens.
 
 **_Proposed tests_**
-- The owner calls the flashLoan function of the FlashLoan contract, specifying as "receiver" the "GoodReceiver" contract address. Since the receiver returns all the amount borrowed plus the fee, the flash loan must be correctly executed.
-- The owner calls the flashLoan function of the FlashLoan contract, specifying as "receiver" the "BadReceiver" contract address. Since the receiver returns only the amount borrowed without the fee, the flash loan must fail.
-
+- The owner calls the flashLoan function of the FlashLoan contract for an amount of 10.000 tokens, specifying as "receiver" the "GoodReceiver" contract address. Since the receiver returns all the amount borrowed plus the fee, the flash loan must be correctly executed. In particular, the receiver must have (50.000 + 10.000 - 10.000 - 5% of 10.000) = 49.500 tokens, and the FlashLoan contract must obtain the fee and have (50.000 - 10.000 + 10.000 + 5% of 10.000) = 50.500 tokens.
+- The owner calls the flashLoan function of the FlashLoan contract for an amount of 10.000, specifying as "receiver" the "BadReceiver" contract address. Since the receiver returns only the amount borrowed without the fee, the flash loan must fail: the balances of FlashLoan and BadReceivers do not change.
 
 <hr />
 
