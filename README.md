@@ -324,7 +324,7 @@ function balanceOfAtokens(address user, address reserve) returns(uint256)
 
 
 
-### 4. Other functions called by users, the oracle and the owner
+### 4.9 Other functions called by users, the oracle and the owner
 <hr />
 
 ```
@@ -376,7 +376,7 @@ function calculateAvaiableCollateralToLiquidate(address collateral, address prin
 - This function takes in input 4 parameters: the address of the reserve collateral, the address of the principal reserve, the purchase amount of collateral and the collateral balance of the user to liquidate. It returns the collateral amount that can be liquidated and the amount of principal token needed to repay during the liquidation.
 <hr />
 
-### 4. Functions for interests and interest rates calculus.
+### 4.10 Functions for interests and interest rates calculus.
 In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
 The interest rate for a reserve depends on:
@@ -523,6 +523,22 @@ The interests that Alice must pay for the borrow, must be greater for T2 tokens 
 - Alice deposits 10.000 T2 as collateral, and she borrows 5.000 T1. Alice's health factor is above the threshold, and if Bob tries to liquidate her, the transaction must fail.
 - Alice deposits 10.000 T2 as collateral, and she borrows 5.000 T1. Then, the price of T1 increases from 1 ETH/TOK to 2 ETH/TOK, and Alice's health factor drops under the liquidation threshold. Bob decides to liquidate her: he repays a part of her debt (50%) obtaining her collateral + the 5% of bonus. After the liquidation, Alice's debt is reduced.
 
+### 5.3 Tests for Flash Loan contract
+The [FlashLoan contract](https://github.com/enricopiseddu/lendingPool/blob/main/flashLoans/FlashLoan.sol) proposed allows users to call the only public function exposed, specifying the address of the contract that receives the loan and that should back the amount plus the fee.
+
+In order to perform an evaluation of the FlashLoan contract, two receiver contracts are written:
+- ["GoodReceiver"](https://github.com/enricopiseddu/lendingPool/blob/main/flashLoans/GoodReceiver.sol): this contract returns to the FlashLoan contract the exact amount borrowed plus the fee
+- ["BadReceiver"](https://github.com/enricopiseddu/lendingPool/blob/main/flashLoans/BadReceiver.sol): this contract returns to the FlashLoan contract only the amount borrowed, without the fee
+
+Both of them implement the interface ["IFlashLoanReceiver"](https://github.com/enricopiseddu/lendingPool/blob/main/flashLoans/IFlashLoanReceiver.sol), and they override the function "executeOperation" which is called by the FlashLoan contract after the amount borrowed is transferred.
+
+
+**_Test initialization_** An address (called "owner") deploys four contracts: an ERC20 contract representing a token with an initial balance of 150.000, the FlashLoan, GoodReceiver and BadReceiver contracts. Next, the owner sets the FlashLoan contract address to GoodReceiver and BadReceiver.
+Finally, the owner transfers to the FlashLoan contract 50.000 tokens, to the GoodReceiver contract 50.000 tokens and to the badReceiver 50.000 tokens.
+
+**_Proposed tests_**
+- The owner calls the flashLoan function of the FlashLoan contract, specifying as "receiver" the "GoodReceiver" contract address. Since the receiver returns all the amount borrowed plus the fee, the flash loan must be correctly executed.
+- The owner calls the flashLoan function of the FlashLoan contract, specifying as "receiver" the "BadReceiver" contract address. Since the receiver returns only the amount borrowed without the fee, the flash loan must fail.
 
 
 <hr />
