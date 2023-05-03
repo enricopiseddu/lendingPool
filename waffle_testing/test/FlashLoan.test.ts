@@ -31,7 +31,7 @@ describe('Tests Flash Loan contract', () => {
     await token.transfer(badReceiver.address, 50000);
 
     await goodReceiver.setflashLoanContractAddress(flashLoanContract.address);
-
+    await badReceiver.setflashLoanContractAddress(flashLoanContract.address);
   });
 
 
