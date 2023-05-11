@@ -7,7 +7,7 @@ import ERC20       from '../build/ERC20.json';
 
 use(solidity);
 
-describe('Tests Lending Pool deposit function', async() => {
+describe('Tests Lending Pool deposit function', () => {
   const [owner, alice, priceOracle] = new MockProvider().getWallets();
   let lp: Contract;
   let token1: Contract;

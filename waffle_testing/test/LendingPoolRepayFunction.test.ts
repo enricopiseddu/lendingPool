@@ -7,7 +7,7 @@ import ERC20       from '../build/ERC20.json';
 
 use(solidity);
 
-describe('Tests Lending Pool redeem function', () => {
+describe('Tests Lending Pool repay function', () => {
   const [owner, alice, bob, priceOracle] = new MockProvider().getWallets();
   let lp: Contract;
   let token1: Contract;
@@ -40,7 +40,7 @@ describe('Tests Lending Pool redeem function', () => {
     //Bon approves LP to transfer 10.000 T2 for repay Alice
     await token2CalledByBob.approve(lp.address, 10000);
 
-    await expect(lpCalledByBob.repay(token2.address, 10000, alice.address)).to.be.reverted;
+    await expect(lpCalledByBob.repay(token2.address, 10000, alice.address, {gasLimit: 500000})).to.be.reverted;
 
     expect(await token2.balanceOf(bob.address)).to.be.equal(10000);
   });
@@ -56,10 +56,10 @@ describe('Tests Lending Pool redeem function', () => {
 
     //Alice approve LP and deposits 10.000 T1 as collateral
     await token1CalledByAlice.approve(lp.address, 10000);
-    await lpCalledByAlice.deposit(token1.address, 10000, true);
+    await lpCalledByAlice.deposit(token1.address, 10000, true, {gasLimit: 500000});
 
     //Alice borrows 5000 T2
-    await lpCalledByAlice.borrow(token2.address, 5000);
+    await lpCalledByAlice.borrow(token2.address, 5000, {gasLimit: 500000});
 
     //We simulate price fluctuation of T2 in order to make Alice under liquidation
     let lpCalledByPriceOracle = lp.connect(priceOracle);
@@ -76,7 +76,7 @@ describe('Tests Lending Pool redeem function', () => {
     await token2CalledByBob.approve(lp.address, amountToRepay);
     
     //Bob tries to repay the Alice's debt
-    await expect(lpCalledByBob.repay(token2.address, amountToRepay, alice.address)).to.be.reverted;
+    await expect(lpCalledByBob.repay(token2.address, amountToRepay, alice.address, {gasLimit: 500000})).to.be.reverted;
 
 
   });
@@ -92,10 +92,10 @@ describe('Tests Lending Pool redeem function', () => {
 
     //Alice approve LP and deposits 10.000 T1 as collateral
     await token1CalledByAlice.approve(lp.address, 10000);
-    await lpCalledByAlice.deposit(token1.address, 10000, true);
+    await lpCalledByAlice.deposit(token1.address, 10000, true, {gasLimit: 500000});
 
     //Alice borrows 5000 T2
-    await lpCalledByAlice.borrow(token2.address, 5000);   
+    await lpCalledByAlice.borrow(token2.address, 5000, {gasLimit: 500000});   
 
     let res = await lp.getUserBorrowBalances(token2.address, alice.address);
 
@@ -106,7 +106,7 @@ describe('Tests Lending Pool redeem function', () => {
     await token2CalledByBob.approve(lp.address, amountToRepay);
 
     //Bob repays the Alice's debt
-    await expect(lpCalledByBob.repay(token2.address, amountToRepay, alice.address)).to.be.not.reverted;
+    await expect(lpCalledByBob.repay(token2.address, amountToRepay, alice.address, {gasLimit: 500000})).to.be.not.reverted;
 
     let resAfterRepay = await lpCalledByBob.getUserBorrowBalances(token2.address, alice.address);
     let {0: value1notused, 1: debtOfAlice, 2: value3notused} = resAfterRepay;

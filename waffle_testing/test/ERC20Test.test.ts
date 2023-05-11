@@ -7,7 +7,7 @@ import ERC20       from '../build/ERC20.json';
 
 use(solidity);
 
-describe('Tests ERC20 transfers', async() => {
+describe('Tests ERC20 transfers', () => {
   const [owner, alice, bob] = new MockProvider().getWallets();
   //let lp: Contract;
   let token1: Contract;

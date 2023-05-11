@@ -33,7 +33,7 @@ describe('Tests on Users setting or not reserve as collateral', () => {
     await token1CalledByBob.approve(lp.address, 10000);
 
     let lpCalledByBob = lp.connect(bob);
-    await lpCalledByBob.deposit(token1.address, 10000, false);
+    await lpCalledByBob.deposit(token1.address, 10000, false, {gasLimit: 500000});
 
   });
 
@@ -52,9 +52,9 @@ describe('Tests on Users setting or not reserve as collateral', () => {
     await token2CalledByAlice.approve(lp.address, 10000);
 
     let lpCalledByAlice = lp.connect(alice);
-    await lpCalledByAlice.deposit(token2.address, 10000, true);
+    await lpCalledByAlice.deposit(token2.address, 10000, true, {gasLimit: 500000});
 
-    await lpCalledByAlice.borrow(token1.address, 1000);
+    await lpCalledByAlice.borrow(token1.address, 1000, {gasLimit: 500000});
 
     //ALice tries to set T2 reserve not as her collateral
     await expect(lpCalledByAlice.setuserUseReserveAsCollateral(token2.address, false)).to.be.reverted;

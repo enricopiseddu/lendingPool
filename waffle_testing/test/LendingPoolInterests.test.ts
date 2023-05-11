@@ -41,10 +41,10 @@ describe('Simulation of the time and interests', () => {
     await token3CalledByBob.approve(lp.address, 250000);
 
     let lpCalledByBob = lp.connect(bob);
-    await lpCalledByBob.deposit(token3.address, 250000, true);
+    await lpCalledByBob.deposit(token3.address, 250000, true, {gasLimit: 500000});
 
     //Bob makes T2 overused by borrowing 90.000 T2
-    await lpCalledByBob.borrow(token2.address, 90000);
+    await lpCalledByBob.borrow(token2.address, 90000, {gasLimit: 500000});
 
   });
 
@@ -58,10 +58,10 @@ describe('Simulation of the time and interests', () => {
       await token3CalledByAlice.approve(lp.address, 20000);
 
       let lpCalledByAlice = lp.connect(alice);
-      await lpCalledByAlice.deposit(token3.address, 20000, true);
+      await lpCalledByAlice.deposit(token3.address, 20000, true, {gasLimit: 500000});
 
       //Alice borrows 10.000 T2
-      await lpCalledByAlice.borrow(token2.address, 10000);
+      await lpCalledByAlice.borrow(token2.address, 10000, {gasLimit: 500000});
 
       // We simulate time passes... (3 days)     
       await provider.send("evm_increaseTime", [60*60*24*3]) // we add 1000 days (in seconds)
@@ -82,10 +82,10 @@ describe('Simulation of the time and interests', () => {
       await token3CalledByAlice.approve(lp.address, 20000);
 
       let lpCalledByAlice = lp.connect(alice);
-      await lpCalledByAlice.deposit(token3.address, 20000, true);
+      await lpCalledByAlice.deposit(token3.address, 20000, true, {gasLimit: 500000});
 
       //Alice borrows 10.000 T1
-      await lpCalledByAlice.borrow(token1.address, 10000);
+      await lpCalledByAlice.borrow(token1.address, 10000, {gasLimit: 500000});
 
       // We simulate time passes... (3 days)
       await provider.send("evm_increaseTime", [60*60*24*3]) // we add 1000 days (in seconds)

@@ -35,7 +35,7 @@ describe('Tests Lending Pool redeem function', () => {
   it('Alice tries to redeem aTokens of type T2, but she does not own them: the transaction must fail', async () => {
     let lpCalledByAlice = lp.connect(alice); //using this variable, transactions on Lending Pool are sent by Alice
 
-    await expect(lpCalledByAlice.redeemAllTokens(token2.address)).to.be.reverted;
+    await expect(lpCalledByAlice.redeemAllTokens(token2.address, {gasLimit: 300000})).to.be.reverted;
 
     expect(await token2.balanceOf(alice.address)).to.be.equal(0);
   });
@@ -50,12 +50,12 @@ describe('Tests Lending Pool redeem function', () => {
     await lpCalledByAlice.deposit(token1.address, 10000, true);
 
     //Alice borrows 1000 T2
-    await lpCalledByAlice.borrow(token2.address, 1000);
+    await lpCalledByAlice.borrow(token2.address, 1000, {gasLimit: 300000});
 
     //Check if alice obtains T2 tokens
     expect(await token2.balanceOf(alice.address)).to.be.equal(1000);
 
-    await expect(lpCalledByAlice.redeemAllTokens(token1.address)).to.be.reverted;
+    await expect(lpCalledByAlice.redeemAllTokens(token1.address, {gasLimit: 300000})).to.be.reverted;
 
     expect(await token1.balanceOf(alice.address)).to.be.equal(0);
   });
@@ -72,7 +72,7 @@ describe('Tests Lending Pool redeem function', () => {
     expect(await token1.balanceOf(alice.address)).to.be.equal(0);
 
     //Alice redeems all his T1 tokens
-    await lpCalledByAlice.redeemAllTokens(token1.address);
+    await lpCalledByAlice.redeemAllTokens(token1.address, {gasLimit: 300000});
 
     expect(await token1.balanceOf(alice.address)).to.be.equal(10000);
    });
@@ -89,7 +89,7 @@ describe('Tests Lending Pool redeem function', () => {
     expect(await token1.balanceOf(alice.address)).to.be.equal(0);
 
     //Alice redeems all his T1 tokens
-    await lpCalledByAlice.redeemAllTokens(token1.address);
+    await lpCalledByAlice.redeemAllTokens(token1.address, {gasLimit: 300000});
 
     expect(await token1.balanceOf(alice.address)).to.be.equal(10000);
    });
