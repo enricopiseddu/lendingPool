@@ -8,12 +8,14 @@ pragma solidity >=0.7.0 <0.9.0;
 import "WadRayMath.sol";
 import "ERC20.sol";
 import "Ownable.sol";
+import "LPlibrary.sol";
 
 // Lending Pool contract
 contract LendingPool is Ownable{
 
     using WadRayMath for uint256;
     using SafeMath for uint256;
+    using LPlibrary for LPlibrary.ReserveData;
 
     struct UserData{
         mapping(address=>bool) usesReserveAsCollateral;
@@ -25,42 +27,17 @@ contract LendingPool is Ownable{
         uint256 healthFactor;
     }
 
-    struct ReserveData{
-        uint256 cumulatedLiquidityIndex;
-        uint256 cumulatedVariableBorrowIndex;
-        uint256 lastUpdateTimestamp;
-        uint256 totalVariableBorrows;
-        uint256 totalLiquidity;
-        uint256 variableBorrowRate;
-        uint256 currentLiquidityRate;
-        uint256 price; //price of 1 token, in ETH
-        uint256 decimals; 
-        uint256 baseLtvAsCollateral;
-        uint256 liquidationThreshold;
-    }
-
     uint256 public numberOfReserves;
-    mapping(address=>ReserveData) public reserves;
+    mapping(address=>LPlibrary.ReserveData) public reserves;
     address[] public reserves_array;
-
-    //parameter used for interest calculus: they must be initialized here and they are applied to all reserves
-    uint256 baseVariableBorrowRate = 1e27;
-    uint256 r_slope1 = 8e27;
-    uint256 r_slope2 = 200e27;
 
     mapping(address=>mapping(address=>uint256)) usersIndexes; //used for incoming interests, user=>reserve=>index
 
     address public priceOracle;
 
-    uint256 public constant OPTIMAL_UTILIZATION_RATE = 0.8 * 1e27; //express in ray
-    uint256 public constant EXCESS_UTILIZATION_RATE = 0.2 * 1e27; //express in ray
     uint256 public constant HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1e18; // express in wad
     uint256 public constant ORIGINATION_FEE_PERCENTAGE = 0.0025 * 1e18; // express in wad, it is the fixed fee applied to all borrows (0.0025%)
-    uint256 public constant SECONDS_PER_YEAR = 31536000;
-
-    uint256 public constant LIQUIDATION_BONUS = 5; //express in percentage
-
-
+    
     mapping(address=>mapping(address=>uint256)) public aTokens; //from user to reserve to numberOfmintedTokens
     mapping(address=>UserData) public users; 
 
@@ -95,7 +72,7 @@ contract LendingPool is Ownable{
 
         require(!reserveAlreadyExists, "");
 
-        reserves[_adr] =  ReserveData(10**27,10**27,0,0,0,0,0,1,0,75,95);
+        reserves[_adr] = LPlibrary.ReserveData(_adr,10**27,10**27,0,0,0,0,0,1,0,75,95);
         reserves_array.push(_adr);
         numberOfReserves = numberOfReserves + 1;
         
@@ -116,7 +93,7 @@ contract LendingPool is Ownable{
         reserves[_reserve].lastUpdateTimestamp = block.timestamp; 
 
         //update ci and bvc and rates
-        updateIndexes(_reserve);
+        reserves[_reserve].updateIndexes();
 
         //eventually adds accrued interests 
         cumulateBalanceInternal(msg.sender, _reserve);
@@ -129,52 +106,6 @@ contract LendingPool is Ownable{
 
     }
 
-
-    function updateIndexes(address _reserve) internal{
-        uint256 totalBorrowsReserve = reserves[_reserve].totalVariableBorrows;
-        
-        uint256 variableBorrowRate;
-
-        ERC20 reserve = ERC20(_reserve);
-        uint256 totalLiquidity = reserve.balanceOf(address(this));
-        uint256 utilizationRate = (totalLiquidity == 0) ? 0 : (totalBorrowsReserve.wadDiv(totalLiquidity));
-
-
-        variableBorrowRate = (utilizationRate <= OPTIMAL_UTILIZATION_RATE) ? baseVariableBorrowRate.add(utilizationRate.rayDiv(OPTIMAL_UTILIZATION_RATE).rayMul(r_slope1)) :
-                                                            baseVariableBorrowRate.add(r_slope1).add(r_slope2.rayMul( utilizationRate.sub(OPTIMAL_UTILIZATION_RATE).rayDiv(EXCESS_UTILIZATION_RATE) ));
-
-        reserves[_reserve].variableBorrowRate = variableBorrowRate;
-
-        uint256 currentLiquidityRate = variableBorrowRate.rayMul(utilizationRate);
-        
-
-        if(totalBorrowsReserve > 0){
-            //update Ci
-            uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp);
-
-            reserves[_reserve].cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(reserves[_reserve].cumulatedLiquidityIndex);
-
-
-            //update Bvc
-            uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
-
-            reserves[_reserve].cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex);
-        }
-    }
-
-    function calculateLinearInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
-        internal
-        view
-        returns (uint256)
-    {
-        
-        uint256 timeDifference = block.timestamp.sub(_lastUpdateTimestamp);
-
-        uint256 timeDelta = timeDifference.wadToRay().rayDiv(SECONDS_PER_YEAR.wadToRay());
-
-        return _rate.rayMul(timeDelta).add(WadRayMath.ray());
-    }
-    
 
     struct BorrowLocalVars {
         uint256 currentLtv;
@@ -318,7 +249,7 @@ contract LendingPool is Ownable{
             ? currentLiquidationThreshold.div(totalCollateralBalanceETH)
             : 0;
 
-        healthFactor = calculateHealthFactorFromBalancesInternal(
+        healthFactor = LPlibrary.calculateHealthFactorFromBalancesInternal(
             totalCollateralBalanceETH,
             totalBorrowBalanceETH,
             totalFeesETH,
@@ -327,20 +258,6 @@ contract LendingPool is Ownable{
 
 
     }
-
-    function calculateHealthFactorFromBalancesInternal(uint256 collateralBalanceETH,
-                                                       uint256 borrowBalanceETH,
-                                                       uint256 totalFeesETH,
-                                                       uint256 liquidationThreshold
-    ) internal pure returns (uint256) {
-        if (borrowBalanceETH == 0) return 2**256-1; // maximum health factor because of no borrows
-
-        return
-            (collateralBalanceETH.mul(liquidationThreshold).div(100)).wadDiv(
-                borrowBalanceETH.add(totalFeesETH)
-            );
-    }
-
 
     // Given an user and a reserve, it returns the amounts of his aTokens, the amount borrowed+fee+interests, the fee and
     // if the user uses the reserve as collateral
@@ -366,7 +283,7 @@ contract LendingPool is Ownable{
 
         uint256 principalBorrowBalanceRay = users[_user].numberOfTokensBorrowed[_reserve].wadToRay();
 
-        uint256 cumulatedInterest = calculateCompoundedInterest(reserves[_reserve].variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
+        uint256 cumulatedInterest = LPlibrary.calculateCompoundedInterest(reserves[_reserve].variableBorrowRate, reserves[_reserve].lastUpdateTimestamp);
 
         cumulatedInterest = cumulatedInterest.rayMul(reserves[_reserve].cumulatedVariableBorrowIndex).rayDiv(users[_user].lastVariableBorrowCumulativeIndex[_reserve]);
 
@@ -375,20 +292,6 @@ contract LendingPool is Ownable{
         return compoundedBalance;
         
     }
-
-    function calculateCompoundedInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 timeDifference = block.timestamp.sub(_lastUpdateTimestamp);
-
-        uint256 ratePerSecond = _rate.div(SECONDS_PER_YEAR);
-
-        return ratePerSecond.add(WadRayMath.ray()).rayPow(timeDifference);
-    }
-
-
 
     // This function computes the collateral needed (in ETH) to cover a new borrow position.
     // The _amount is the number of tokens of _reserve that the user want borrowing.
@@ -425,7 +328,7 @@ contract LendingPool is Ownable{
     function updateStateOnBorrow(address _reserve, address _user, uint256 _amountBorrowed, uint256 _borrowFee) internal{
         (, , uint256 balanceIncrease) = getUserBorrowBalances(_reserve, _user);
         
-        updateIndexes(_reserve);
+        reserves[_reserve].updateIndexes();
         
 
         // increase total borrows variable for the reserve
@@ -440,15 +343,9 @@ contract LendingPool is Ownable{
         
         users[_user].lastUpdateTimestamp[_reserve] = block.timestamp;
 
-     
-
         //update interest rates and timestamp for the reserve
-        uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
-        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.sub(_amountBorrowed), reserves[_reserve].totalVariableBorrows);
-
-        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
-        reserves[_reserve].variableBorrowRate = newVariableRate;
-        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+        reserves[_reserve].updateInterestRatesAndTimestamp(0, _amountBorrowed);
+        
         
 
     }
@@ -470,36 +367,6 @@ contract LendingPool is Ownable{
         uint256 compoundedBalance = getCompoundedBorrowBalance(_user, _reserve);
         
         return (principalBorrowBalance, compoundedBalance, compoundedBalance.sub(principalBorrowBalance));
-    }
-
-
-    function calculateInterestRates(uint256 _availableLiquidity, uint256 _totalBorrows) public view 
-                                                                        returns(uint256 currentLiquidityRate, 
-                                                                                uint256 currentVariableBorrowRate){
-        uint256 utilizationRate = (_totalBorrows == 0 && _availableLiquidity == 0)
-            ? 0
-            : _totalBorrows.rayDiv(_availableLiquidity.add(_totalBorrows));
-
-        if (utilizationRate > OPTIMAL_UTILIZATION_RATE){
-
-            uint256 excessUtilizationRateRatio = utilizationRate
-                .sub(OPTIMAL_UTILIZATION_RATE)
-                .rayDiv(EXCESS_UTILIZATION_RATE);
-
-           currentVariableBorrowRate = baseVariableBorrowRate.add(r_slope1).add(
-                r_slope2.rayMul(excessUtilizationRateRatio)
-            ); 
-        }
-        else{
-            currentVariableBorrowRate = baseVariableBorrowRate.add(
-                utilizationRate.rayDiv(OPTIMAL_UTILIZATION_RATE).rayMul(r_slope1)
-            );
-        }
-
-
-        currentLiquidityRate = currentVariableBorrowRate.rayMul(utilizationRate);
-
-
     }
 
 
@@ -587,7 +454,7 @@ contract LendingPool is Ownable{
             .sub(vars.amountToDecreaseETH.mul(vars.reserveLiquidationThreshold))
             .div(vars.collateralBalancefterDecrease);
 
-        uint256 healthFactorAfterDecrease = calculateHealthFactorFromBalancesInternal(
+        uint256 healthFactorAfterDecrease = LPlibrary.calculateHealthFactorFromBalancesInternal(
             vars.collateralBalancefterDecrease,
             vars.borrowBalanceETH,
             vars.totalFeesETH,
@@ -630,7 +497,7 @@ contract LendingPool is Ownable{
 
     function updateStateOnRepay(address _reserve, address _userToRepay, uint256 _amountToRepay, uint256 _fee, uint256 _interests) internal{
         //update reserve state
-        updateIndexes(_reserve);
+        reserves[_reserve].updateIndexes();
         reserves[_reserve].totalVariableBorrows -= (_amountToRepay - _fee - _interests); //subtract the amount borrowed
         reserves[_reserve].totalVariableBorrows += (_fee + _interests); //add fee and interests
 
@@ -641,12 +508,7 @@ contract LendingPool is Ownable{
         users[_userToRepay].lastUpdateTimestamp[_reserve] = 0;
 
          //update interest rates and timestamp for the reserve
-        uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
-        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.add(_amountToRepay), reserves[_reserve].totalVariableBorrows);
-
-        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
-        reserves[_reserve].variableBorrowRate = newVariableRate;
-        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+        reserves[_reserve].updateInterestRatesAndTimestamp(_amountToRepay, 0);
 
     }
 
@@ -662,24 +524,17 @@ contract LendingPool is Ownable{
         aTokens[_user][_reserve] += accruedInterests;
 
         //update user index
-        usersIndexes[_user][_reserve] = getNormalizedIncome(_reserve);
+        usersIndexes[_user][_reserve] = reserves[_reserve].getNormalizedIncome();
 
         return (aTokensPreviousBalance, cumulatedBalance, accruedInterests, usersIndexes[_user][_reserve]);
     }
-
-
-    function getNormalizedIncome(address _reserve) internal view returns(uint256){
-        return calculateLinearInterest(reserves[_reserve].currentLiquidityRate, reserves[_reserve].lastUpdateTimestamp).
-                    rayMul(reserves[_reserve].cumulatedLiquidityIndex);
-    }
-
 
     //it returns the amount of aTokens + interests accrued
     function balanceOfAtokens(address _user, address _reserve) public view returns(uint256){
         uint256 currentBalance = aTokens[_user][_reserve];
         if (currentBalance == 0){ return 0;}
         
-        return currentBalance.wadToRay().rayMul(getNormalizedIncome(_reserve)).rayDiv(usersIndexes[_user][_reserve]).rayToWad();
+        return currentBalance.wadToRay().rayMul(reserves[_reserve].getNormalizedIncome()).rayDiv(usersIndexes[_user][_reserve]).rayToWad();
     }
 
 
@@ -711,15 +566,11 @@ contract LendingPool is Ownable{
 
 
     function updateStateOnRedeem(address _reserve, uint256 _amountToRedeem) internal{
-        updateIndexes(_reserve);
+        reserves[_reserve].updateIndexes();
 
         //update interest rates and timestamp for the reserve
-        uint256 availableLiquidity = ERC20(_reserve).balanceOf(address(this));
-        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(availableLiquidity.sub(_amountToRedeem), reserves[_reserve].totalVariableBorrows);
-
-        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
-        reserves[_reserve].variableBorrowRate = newVariableRate;
-        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
+        reserves[_reserve].updateInterestRatesAndTimestamp(0, _amountToRedeem);
+        
     }
 
     struct LiquidationVars{
@@ -762,12 +613,12 @@ contract LendingPool is Ownable{
 
         vars.actualAmountToLiquidate = (_amountToRepay > vars.maximumAmountToLiquidate) ? vars.maximumAmountToLiquidate : _amountToRepay;
 
-        (vars.maximumCollateralToLiquidate, vars.principalAmountNeeded) = calculateAvaiableCollateralToLiquidate(_collateral, _reserveToRepay, vars.actualAmountToLiquidate, vars.collateralBalance);
+        (vars.maximumCollateralToLiquidate, vars.principalAmountNeeded) = LPlibrary.calculateAvaiableCollateralToLiquidate(reserves[_collateral].price, reserves[_reserveToRepay].price, vars.actualAmountToLiquidate, vars.collateralBalance);
 
         vars.fee = users[_userToLiquidate].fees[_reserveToRepay];
         
         if (vars.fee > 0){
-            (vars.liquidatedCollateralForFee, vars.feeLiquidated) = calculateAvaiableCollateralToLiquidate(_collateral, _reserveToRepay, vars.fee, vars.collateralBalance.sub(vars.maximumCollateralToLiquidate));
+            (vars.liquidatedCollateralForFee, vars.feeLiquidated) = LPlibrary.calculateAvaiableCollateralToLiquidate(reserves[_collateral].price, reserves[_reserveToRepay].price, vars.fee, vars.collateralBalance.sub(vars.maximumCollateralToLiquidate));
         }
 
         if (vars.principalAmountNeeded < vars.actualAmountToLiquidate) {
@@ -792,48 +643,17 @@ contract LendingPool is Ownable{
 
     }
 
-    function calculateAvaiableCollateralToLiquidate(address _collateral, address _principal, uint256 _purchaseAmount, uint256 _userCollateralBalance) internal view 
-        returns(uint256 collateralAmount, uint256 principalNeeded){
-
-        uint256 collateralPrice = reserves[_collateral].price;
-        uint256 principalPrice = reserves[_principal].price;
-
-        uint256 maxAmountCollateralToLiquidate= (principalPrice
-                    .mul(_purchaseAmount)
-                    .div(collateralPrice)
-                    .mul(LIQUIDATION_BONUS) // 5%
-                    .div(100))
-                    .add(
-                        principalPrice
-                        .mul(_purchaseAmount)
-                        .div(collateralPrice)
-                    ); //liquidator obtains the respective amount of collateral + bonus 5%
-
-        if (maxAmountCollateralToLiquidate > _userCollateralBalance){
-            collateralAmount = _userCollateralBalance;
-            principalNeeded = collateralPrice
-                .mul(collateralAmount)
-                .div(principalPrice)
-                .mul(100)
-                .div(LIQUIDATION_BONUS);
-        }
-        else{
-            collateralAmount = maxAmountCollateralToLiquidate;
-            principalNeeded = _purchaseAmount;
-        }
-
-    }
 
     function updateStateOnLiquidation(address _principalReserve, address _collateralReserve, address _userToLiquidate,
         uint256 _amountToLiquidate, uint256 _collateralToLiquidated, uint256 _feeLiquidated, uint256 _liquidatedCollateralForFee, uint256 _interests) internal{
         
         //update principal reserve
-        updateIndexes(_principalReserve);
+        reserves[_principalReserve].updateIndexes();
         reserves[_principalReserve].totalVariableBorrows += _interests; //add interests
         reserves[_principalReserve].totalVariableBorrows -= _amountToLiquidate; //subtract the amount liquidated
 
         //update collateral reserve
-        updateIndexes(_collateralReserve);
+        reserves[_collateralReserve].updateIndexes();
 
         //update the user's state
         users[_userToLiquidate].numberOfTokensBorrowed[_principalReserve] += _interests; //add interests
@@ -844,22 +664,11 @@ contract LendingPool is Ownable{
         users[_userToLiquidate].lastUpdateTimestamp[_principalReserve] = block.timestamp;
 
         //update interest rate for principal reserve
-        updateInterestRatesAndTimestamp(_principalReserve, _amountToLiquidate, 0);
+        reserves[_principalReserve].updateInterestRatesAndTimestamp(_amountToLiquidate, 0);
 
         //update interest rate for collateral reserve
-        updateInterestRatesAndTimestamp(_collateralReserve, 0, _collateralToLiquidated.add(_liquidatedCollateralForFee));
+        reserves[_collateralReserve].updateInterestRatesAndTimestamp(0, _collateralToLiquidated.add(_liquidatedCollateralForFee));
     
 
     }
-
-
-    function updateInterestRatesAndTimestamp(address _reserve, uint256 _liquidityAdded, uint256 _liquidityTaken) internal{
-        uint256 liquidityAvailable = ERC20(_reserve).balanceOf(address(this));
-        (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(liquidityAvailable.add(_liquidityAdded).sub(_liquidityTaken), reserves[_reserve].totalVariableBorrows);
-
-        reserves[_reserve].currentLiquidityRate = newLiquidityRate;
-        reserves[_reserve].variableBorrowRate = newVariableRate;
-        reserves[_reserve].lastUpdateTimestamp = block.timestamp;
-    }
-
 }
