@@ -548,6 +548,21 @@ This image shows the output about tests.
   <img src="./img/alltests.PNG"/>
 </p>
 
+### 5.4 Execution of a Lending Pool
+Until now, the evaluation phase consisted in testing all features mostly separately. 
+In this paragraph, the execution of a lending pool is proposed: it can be seen as a succession of transactions sent by users. Since a lending pool modifies its state according to the transactions sent by users and the result of a transaction may depend on the previous transactions and the actual state, it is important to evaluate the execution of a lending pool. 
+
+**_Actors_** 
+The actors involved in this execution are the owner, Alice and Bob.
+
+**_Initialization_** 
+The owner deploy the Lending Pool contract and the ERC20 contract representing the asset called "Token" with an initial balance of 20.000 tokens. Then he distributes 10.000 tokens to Alice and 10.000 tokens to Bob. The lending pool owns 0 tokens.
+
+**_Execution_**
+
+
+**_Output_**
+
 ## 6. Main differences between this work and the original implementation
 In order to focus on the “deposit” and “borrow” actions, this work contains some changes that do not prejudice the meaning of Aave protocol. In this section we will see these differences.
 
