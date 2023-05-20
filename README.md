@@ -559,9 +559,87 @@ The actors involved in this execution are the owner, Alice and Bob.
 The owner deploy the Lending Pool contract and the ERC20 contract representing the asset called "Token" with an initial balance of 20.000 tokens. Then he distributes 10.000 tokens to Alice and 10.000 tokens to Bob. The lending pool owns 0 tokens.
 
 **_Execution_**
+From the initialization state, the following transactions are executed:
+- Alice deposits on the pool 5.000 tokens not as collateral
+- Bob deposits on the pool 5.000 token as collateral
+- Bob borrows 2.000 tokens using his collateral
+
+Since Bob's health factor depends mostly on the time (that increases the interest), and the time is modeled with block difference, we simulate the time passing by forcing the mining of blocks until we obtain Bob's health factor under the threshold.
+
+After 35 days, Bob's health factor drops under the threshold, and so he can be liquidated
+- Alice liquidates Bob by repaying his fee and 2.000 tokens (a part of his debt)
+- Alice redeems all her tokens from the lending pool
 
 
 **_Output_**
+This is the output of the execution of the previous transactions 
+```
+Tests Lending Pool execution
+
+###########################################################
+
+Initial state:
+   Alice has 10000 tokens
+   Bob   has 10000 tokens
+   LP    has 0 tokens
+
+###########################################################
+
+Alice and Bob deposit 5.000 to LP:
+   Alice has 5000 tokens
+   Bob   has 5000 tokens
+   LP    has 10000 tokens
+
+Bob minted tokens: 5000
+
+###########################################################
+
+Bob borrows 2.000 tokens:
+   Alice has 5000 tokens
+   Bob   has 7000 tokens
+   LP    has 8000 tokens
+
+
+Bob debt is 2005 including fee
+
+###########################################################
+
+Bob borrows 2.000 tokens, his HF now is 2.3631840796019903
+       After 7 days his HF is 2.2310944105213717
+       After 14 days his HF is 1.9891122278056952
+       After 21 days his HF is 1.6743038420867113
+       After 28 days his HF is 1.3309050154104791
+       After 35 days his HF is 0.998528484338869
+
+Bob can be liquidated because his HF < 1
+Bob debt is 4752
+
+Before liquidation, Alice - the liquidator - has 5000 tokens
+After liquidation, Alice - the liquidator - has 5100 tokens
+
+Alice liquidates Bob of an amount equals to 2000 and obtaining a bonus of 100 tokens
+
+
+Alice liquidates Bob:
+   Alice has 5100 tokens
+   Bob   has 7000 tokens
+   LP    has 7900 tokens
+
+Bob minted tokens: 2900
+Bob debt is 2752
+
+###########################################################
+
+Alice redeems all his tokens:
+   Alice has 10100 tokens
+   Bob   has 7000 tokens
+   LP    has 2900 tokens
+
+Alice minted tokens: 0
+
+###########################################################
+
+```
 
 ## 6. Main differences between this work and the original implementation
 In order to focus on the “deposit” and “borrow” actions, this work contains some changes that do not prejudice the meaning of Aave protocol. In this section we will see these differences.
