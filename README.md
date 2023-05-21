@@ -277,12 +277,6 @@ function calculateUserGlobalData(address user) returns(uint256, uint256, uint256
 - Given a user, it returns 7 parameters: his total liquidity (deposited in all reserves), his total collateral, his total borrows, his total fees, his current Loan to value,  his liquidation threshold and its health factor.
 <hr />
 
-```
-function calculateHealthFactorFromBalancesInternal(uint256 collateral, uint256 borrow, uint256 fee, uint256 liquidationThreshold)
-```
-
-- This function computes the health factor of a user. The health factor depends on user’s collateral, his borrow, his fee and his liquidation threshold.
-<hr />
 
 ```
 function getCompoundedBorrowBalance(address user, address reserve) returns(uint256)
@@ -322,9 +316,17 @@ function balanceOfAtokens(address user, address reserve) returns(uint256)
 - Given a user and a reserve, it returns the amount of aTokens of the user, including interests accrued.
 <hr />
 
+### 4.9 Reserve update functions
+These functions are called by the lending pool in order to update the respective reserve when a borrow, repay, redeem and liquidation function event is executed.
 
+```
+function updateStateOnBorrow (TODO input args)
+function updateStateOnRepay
+function updateStateOnRedeem
+function updateStateOnLiquidation
+```
 
-### 4.9 Other functions called by users, the oracle and the owner
+### 4.10 Configuration functions
 <hr />
 
 ```
@@ -343,6 +345,17 @@ function addReserve(address reserve) onlyOwner
 
 In Aave's implementation, the creation of a reserve is made by the ["LendingPoolConfiguration"](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolConfigurator.sol) contract and by the methods "initReserve" and "initReserveWithdata". The Lending Pool configuration contract allows also to modify some reserve's parameter (i.e. Liquidation Threshold, decimals...).
 
+<hr />
+```
+function setUserUseReserveAsCollateral(address reserve, bool useAsCollateral)
+```
+
+- This function allows the user (the msg.sender) to set if he uses the reserve as collateral. This function can abort if the user’s collateral makes his health factor under a given threshold
+<hr />
+
+
+
+### 4.10 Other functions
 
 <hr />
 
@@ -353,12 +366,7 @@ function calculateCollateralNeededInETH(address reserve, uint256 amount, uint256
 - This function returns the collateral needed (in ETH) to cover the borrows (new amount to borrow + actual userBorrows). It can be called by everyone.
 <hr />
 
-```
-function setUserUseReserveAsCollateral(address reserve, bool useAsCollateral)
-```
 
-- This function allows the user (the msg.sender) to set if he uses the reserve as collateral. This function can abort if the user’s collateral makes his health factor under a given threshold
-<hr />
 
 ```
 function balanceDecreaseAllowed(address reserve, address user, uint256 amount) returns(bool)
@@ -368,15 +376,9 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 <hr />
 
 
+### 4.10 Lending Pool library
 
-```
-function calculateAvaiableCollateralToLiquidate(address collateral, address principal, uint256 purchaseAmount, uint256 userCollateralBalance) returns(uint256 collateralAmount, uint256 principalNeeded)
-```
 
-- This function takes in input 4 parameters: the address of the reserve collateral, the address of the principal reserve, the purchase amount of collateral and the collateral balance of the user to liquidate. It returns the collateral amount that can be liquidated and the amount of principal token needed to repay during the liquidation.
-<hr />
-
-### 4.10 Functions for interests and interest rates calculus.
 In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
 The interest rate for a reserve depends on:
@@ -393,6 +395,21 @@ function calculateCompoundedInterest(uint256 rate, uint256 lastUpdateTimestamp) 
 function calculateInterestRates(uint256 availableLiquidity, uint256 totalBorrows) return(uint256 currentLiquidityRate, uint256 currentVariableBorrowRate)
 function updateInterestRatesAndTimestamp(address _reserve, uint256 _liquidityAdded, uint256 _liquidityTaken)
 ```
+
+```
+function calculateAvaiableCollateralToLiquidate(address collateral, address principal, uint256 purchaseAmount, uint256 userCollateralBalance) returns(uint256 collateralAmount, uint256 principalNeeded)
+```
+
+- This function takes in input 4 parameters: the address of the reserve collateral, the address of the principal reserve, the purchase amount of collateral and the collateral balance of the user to liquidate. It returns the collateral amount that can be liquidated and the amount of principal token needed to repay during the liquidation.
+<hr />
+
+```
+function calculateHealthFactorFromBalancesInternal(uint256 collateral, uint256 borrow, uint256 fee, uint256 liquidationThreshold)
+```
+
+- This function computes the health factor of a user. The health factor depends on user’s collateral, his borrow, his fee and his liquidation threshold.
+<hr />
+
 
 ## 5. Evaluation
 In this section, some experiments are proposed, in order to verify the correctness of transactions. 
