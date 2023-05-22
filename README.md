@@ -1,7 +1,7 @@
 # A minimal implementation of Aave
 
 ## 1. Introduction and goal
-[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. Its market capitalization, given by 
+[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. Its market capitalization, given by the product between the number of tokens and the price, reached 7.58 billion dollars in May 2021, and from May 2022 it seems to be stable at around 1 billion dollars. 
 
 LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing. In addition to these actions, Aave provides to users repayment, redeem and liquidation functionalities. Another Aave's features is the implementation of flash loans: they are loans where collateral is not used because the amount of value borrowed must be returned in the same transaction.
 
@@ -28,8 +28,9 @@ When a loan is completely repaid by the borrower (amount to borrow + interests),
 **_Tokens_** Tokens play a central role in DeFi and in Lending Pools. A token is a crypto-asset having value and living in a blockchain. Tokens can be minted, transferred, and exchanged both in Decentralized Exchanges (DEX) and in other contracts handling them. LPs can handle tokens, they sometimes are minted in order to keep track of users’ actions or to redeem them.
 
 ## 3. Tools used
-This work is written in Solidity, and it is composed of four smart contracts:
-- [LendingPool.sol](https://github.com/enricopiseddu/lendingPool/blob/main/LendingPool.sol), the main contract. It is the core of this work: it defines the borrow and deposit functions and other functions used by them
+This work is written in Solidity, and it is composed of five smart contracts:
+- [LendingPool.sol](https://github.com/enricopiseddu/lendingPool/blob/main/LendingPool.sol), the main contract. It is the core of this work: it defines the main actions users can execute
+- [LPLibrary.sol](https://github.com/enricopiseddu/lendingPool/blob/main/LPlibrary.sol), a library that defines some data, constants and functions used by the main contract
 - [ERC20.sol](https://github.com/enricopiseddu/lendingPool/blob/main/ERC20.sol) is the contract that defines the ERC20 Token. Its interface is the [IERC20.sol](https://github.com/enricopiseddu/lendingPool/blob/main/IERC20.sol)
 - [Ownable.sol](https://github.com/enricopiseddu/lendingPool/blob/main/Ownable.sol) is the contract from which LendingPool.sol inherits: it defines the “owner” of the lending pool that is the only address that can configure it.
 - Finally, the library [WadRayMath.sol](https://github.com/enricopiseddu/lendingPool/blob/main/WadRayMath.sol) provides multiplications and divisions for wads and rays, respectively decimal numbers with 18 and 27 digits. Its usage is necessary because the language handles only integer numbers.
@@ -320,10 +321,11 @@ function balanceOfAtokens(address user, address reserve) returns(uint256)
 These functions are called by the lending pool in order to update the respective reserve when a borrow, repay, redeem and liquidation function event is executed.
 
 ```
-function updateStateOnBorrow (TODO input args)
-function updateStateOnRepay
-function updateStateOnRedeem
-function updateStateOnLiquidation
+function updateStateOnBorrow (address reserve, address user, uint256 amountBorrowed, uint256 fee)
+function updateStateOnRepay (address reserve, address userToRepay, uint256 amountToRepay, uint256 interests)
+function updateStateOnRedeem (address reserve, uint256 amountRedeemed)
+function updateStateOnLiquidation(address _principalReserve, address _collateralReserve, address _userToLiquidate,
+        uint256 _amountToLiquidate, uint256 _collateralToLiquidated, uint256 _feeLiquidated, uint256 _liquidatedCollateralForFee, uint256 _interests)
 ```
 
 ### 4.10 Configuration functions
@@ -346,6 +348,7 @@ function addReserve(address reserve) onlyOwner
 In Aave's implementation, the creation of a reserve is made by the ["LendingPoolConfiguration"](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolConfigurator.sol) contract and by the methods "initReserve" and "initReserveWithdata". The Lending Pool configuration contract allows also to modify some reserve's parameter (i.e. Liquidation Threshold, decimals...).
 
 <hr />
+
 ```
 function setUserUseReserveAsCollateral(address reserve, bool useAsCollateral)
 ```
@@ -376,8 +379,15 @@ function balanceDecreaseAllowed(address reserve, address user, uint256 amount) r
 <hr />
 
 
-### 4.10 Lending Pool library
+### 4.11 Lending Pool library
+The Lending Pool library consists in a set of functions, mostly view called by the main contract "Lending Pool".
 
+This library also defines the struct describing a reserve and some constants such as:
+- seconds per year
+- liquidation threshold
+- liquidation bonus
+- optimal utilization rate
+- parameters that defines the slope of the functions computing interests
 
 In general, interests for a single borrow depend on the time passing, on the amount borrowed and on the interest rate.
 
@@ -394,8 +404,10 @@ function calculateLinearInterest(uint256 rate, uint256 lastUpdateTimestamp) retu
 function calculateCompoundedInterest(uint256 rate, uint256 lastUpdateTimestamp) return(uint256)
 function calculateInterestRates(uint256 availableLiquidity, uint256 totalBorrows) return(uint256 currentLiquidityRate, uint256 currentVariableBorrowRate)
 function updateInterestRatesAndTimestamp(address _reserve, uint256 _liquidityAdded, uint256 _liquidityTaken)
+function getNormalizedIncome(address reserve) returns(uint256)
 ```
 
+Other functions proposed in the library are:
 ```
 function calculateAvaiableCollateralToLiquidate(address collateral, address principal, uint256 purchaseAmount, uint256 userCollateralBalance) returns(uint256 collateralAmount, uint256 principalNeeded)
 ```
