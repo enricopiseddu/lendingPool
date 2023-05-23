@@ -686,12 +686,16 @@ The main difference between the function proposed in this implementation and the
 
 Another difference is that in Aave, when the redeem action is execute, is possible to redirect the accrued interests on aTokens towards a particular address by calling [this fuction](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L179), while in this implementation the accrued interests are cumulated in the owner user of aTokens.
 
-#### 4.6.5 Differences between liquidation functions
+#### 6.2.5 Differences between liquidation functions
 There are two main difference between the liquidation function of Aave and that proposed in this implementation. 
 
 The first difference is that in Aave the liquidator decides how to receive the collateral liquidated: he can receive directly the assets (tokens ERC20) or he can receive the amount of "aTokens", by setting an additional boolean parameter, called "receiveATokens" to the liquidation function. In this implementation, it is possible to repay the liquidator only transfer directly him the asset by calling the transfer method of the ERC20 contract, without receiving the Tokens.
 
 The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
+
+#### 6.2.6 Differences between flash loan functions
+The main difference is that flash loans are available in Aave implementation, while in this work, they are not included in the lending pool but summarized and studied apart.
+Since in Aave flash loans are included, a part of the fee accrued is distributed to lenders, while the other part is taken by the protocol itself: this feature notices in the respective [function](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L860).
 
 
 
