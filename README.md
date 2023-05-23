@@ -95,21 +95,6 @@ According to the user's data calculated before, the function computes the minimu
 
 After checking that user has enough collateral, the function updates the state of the reserve (interest rates and timestamps). Finally, it transfers the number of _amountToBorrow_ tokens to the user, thanks to the Transfer method of the ERC20 contract.
 
-#### 4.2.1 Differences between borrow functions
-This section focuses on the differences between Aave’s borrow function and the borrow function proposed in this work, respectively called “ABF” and “PBF”.
-
-- First difference regards the input parameters. Beyond the reserve’s address and the amount to borrow, ABF contains two additional parameters: the interest rate mode (that can be set variable or stable) and an integer called “referralCode”, a program consisting of a 20% fee-share.
-
-- Unlike PBF, the ABF can be called only on active, unfreezed and enabled for borrows reserves. These checks are made mostly thanks to modifiers.
-
-- In ABF, the available liquidity of the reserve is calculated by the ["Core"](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolCore.sol#L594) contract, and it represents the amount of ERC20 tokens owned by the Lending Pool or the amount of ETHs. In the PBF, this liquidity represents only the amount of ERC20 tokens (thanks to “balanceOf” method of ERC20 contract), because this implementation does not allow borrowing ETHs.
-
-- In ABF, both users’ data and the collateral needed to cover a borrow position are computed by the [“Data Provider”](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolDataProvider.sol) contract, while the [“Fee Provider”](https://github.com/aave/aave-protocol/blob/master/contracts/fees/FeeProvider.sol) contract provides fee calculus. In the PBF, these computations are made by the "Lending Pool" contract, using the same formulas proposed in Aave but with different data structures.
-
-- The last difference regards an additional [portion of code](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L469), in ABF, executed when the msg.sender wants to borrow at a stable rate. This part of code checks if the reserve is enabled for stable borrows, if msg.sender is allowed to borrow a stable rate, and the maximum amount msg.sender can borrow at a stable rate, that is 25% of the reserve’s available liquidity.
-
-
-
 ### 4.3 Deposit function
 The deposit function is summarized by the follow pseudocode:
 ```
@@ -132,18 +117,6 @@ An amount of "amountToDeposit" of aTokens are minted for the user. These aTokens
 
 Finally, the function updates interest rates and timestamps for the reserve and keeps track in a data structure if the user wants to use the reserve as collateral.
 
-
-#### 4.3.1 Differences between borrow functions
-This section focuses on the differences between Aave’s deposit function and the deposit function proposed in this work, respectively called “ADF” and “PDF”.
-
-- First difference regards input parameters. Both functions accept the address of the reserve and an integer value representing the amount to deposit. The ADF takes another parameter called referral code (the same parameter indicated in 4.2.1), while the PDF takes a different parameter: a boolean indicating if _msg.sender_ wants his deposit in the reserve as collateral. 
-
-- In both implementations, after depositing, an number of aTokens are minted for the _msg.sender_. These tokens keep track of how much a certain user has deposited in the reserve. In ADF aTokens are managed by a smart contract called ["AToken"](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol), while in the PDF these tokens are stored in a double mapping called "aTokens" having type (address=>address=>uint256).
-
-- In the ADF, when the _msg.sender_ deposits in a reserve for the first time, the Lending Pool considers this deposit as collateral. On the contrary, in the PDF the _msg.sender_ must indicate if wants to use the reserve as collateral or not, storing that in a particular data structure.
-
-- In the PDP, before the Lending Pool transfers the amount of tokens from the _msg.sender_ to its address, it checks (thanks to "allowance" method of ERC20) if _msg.sender_ has allowed this transfer. In the ADP this check is not executed. 
-
 ### 4.4 Repay function
 The repay function is summarized by the follow pseudocode:
 ```
@@ -162,10 +135,6 @@ Firstly, the function checks the user's health factor is above the threshold (i.
 If all these checks are satisfied, the function updates the state of the lending pool and the user, and finally it transfers the amount to repay from the msg.sender to the reserve of the LP.
 
 When the repay function is successfully executed, the userToRepay's health factor increases allowing him to redeem the value of the collateral used in the loan just repaid. 
-
-#### 4.4.1 Differences between repay functions
-The main difference between the repay function proposed in this work and the original implementation in Aave, is that in the proposed implementation it is possible only repay completely the debt, while in Aave the msg.sender can repay also only a part of it. 
-In both implementations, the caller (msg.sender) can repay the debt of another user specifying the address, or the own debt specifying his address.
 
 
 ### 4.5 Redeem function
@@ -190,12 +159,6 @@ If these checks pass, the function burns the msg.sender's aTokens, it resets the
 Finally, the function directly transfers the amountToRedeem to the msg.sender.
 
 When a user decides to redeem his tokens from a reserve, if these tokens are not used as collateral then the user's health factor does not change, else it changes and the redeem action is correctly executed only if the health factor does not drop under a threshold.
-
-#### 4.5.1 Differences between redeem functions
-The main difference between the function proposed in this implementation and the original implementation of Aave is that in this implementation it is possible only to redeem all own tokens from a reserve, while in Aave it is possible to specify the exact amount to redeem (by passing to the function an additional parameter to the [redeem function](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L218)). In Aave, this function must be called on the ["ATokens.sol"](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol) contract (the contract handling the asset to redeem), while in ProtoAave the redeem function must be called on the LendingPool contract.
-
-Another difference is that in Aave, when the redeem action is execute, is possible to redirect the accrued interests on aTokens towards a particular address by calling [this fuction](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L179), while in this implementation the accrued interests are cumulated in the owner user of aTokens.
-
 
 ### 4.6 Liquidation function
 The liquidation function is summarized by the follow pseudocode:
@@ -233,13 +196,6 @@ Afterwards, in order to repay the liquidator, the function checks if the Lending
 
 Finally, the function transfers to the liquidator the amount of tokens of type "collateral", including the bonus, and transfers to the reserve "reserveToRepay" the amount of tokens used by the liquidator to buy the collateral at a discount price.
 
-#### 4.6.1 Differences between liquidation functions
-There are two main difference between the liquidation function of Aave and that proposed in this implementation. 
-
-The first difference is that in Aave the liquidator decides how to receive the collateral liquidated: he can receive directly the assets (tokens ERC20) or he can receive the amount of "aTokens", by setting an additional boolean parameter, called "receiveATokens" to the liquidation function. In this implementation, it is possible to repay the liquidator only transfer directly him the asset by calling the transfer method of the ERC20 contract, without receiving the Tokens.
-
-The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
-
 
 
 ### 4.7 Flash loan function
@@ -273,12 +229,6 @@ Then, the code of the receiver contract is executed (call to executeOperation): 
 Finally, the function checks if the flash loan is completely repaid (including fee): if true, the transaction is correctly executed and the flash loan is correctly performed, if false the transaction is completely reverted.
 
 As seen, performing a flash loan does not require the user deposits collateral or he has a sufficient health factor. The only constraint is that the amount borrowed must be returned in the same currency (including the fee) within the same transaction, otherwise, the flash loan is reverted.
-
-
-#### 4.7.1 Differences between flash loan functions
-The main difference is that flash loans are available in Aave implementation, while in this work, they are not included in the lending pool but summarized and studied apart.
-Since in Aave flash loans are included, a part of the fee accrued is distributed to lenders, while the other part is taken by the protocol itself: this feature notices in the respective [function](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L860).
-
 
 ### 4.8 Functions for computing users' data
 All of these functions can be called by everyone. For each function, its signature is proposed, and a brief comment on how it works. All of these functions are very similar to Aave's implementation because they mostly compute data with specific formulas. The only differences are the data structures used: in this work, there are two main structures holding reserve and user's data, while in Aave's implementation data are held by different smart contracts.
@@ -683,9 +633,12 @@ Alice minted tokens: 0
 
 ```
 
-## 6. Main differences between this work and the original implementation
-In order to focus on the “deposit” and “borrow” actions, this work contains some changes that do not prejudice the meaning of Aave protocol. In this section we will see these differences.
+## 6. Differences between this work and the original implementation
+Although ProtoAave implements the main features of Aave, it contains some changes that do not prejudice the meaning of Aave protocol. 
 
+In the first part of this section we will see the main differences between ProtoAave and Aave, while in the second part the detailed differences between all functions.
+
+### 6.1 Main differences
 **_Asset type_**
 Aave handles both ERC20 tokens and Ethers, in fact users can deposit both of them. In this work, the main smart contract handles only ERC20 tokens: Ethers are used only to compare different ERC20 tokens and assign them a value. To do this, a particular address called “oracle” can set tokens’ prices. 
 
@@ -700,6 +653,46 @@ Since Aave implements both variable and stable rates, it allows users to swap th
 
 **_Lending Pool configuration_**
 In Aave it is possible to configure each reserve, in particular, each of them can be actived, freezed and enabled as collateral. An active and unfreezed reserve accepts deposits and borrows, while a freezed reserve accepts only repay and liquidation actions. These actions, in Aave, can be executed by a smart contract called [“Lending Pool Configurator”](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolConfigurator.sol). In this work, these actions are unnecessary because once a reserve is added, it is ready to accept deposits (also as collateral) and borrows actions.
+
+
+### 6.2 Detailed differences
+
+#### 6.2.1 Differences between borrow functions
+The first difference between the borrow function proposed in ProtoAave and Aave regards the input parameters. Beyond the reserve’s address and the amount to borrow, the Aave's borrow function contains two additional parameters: the interest rate mode (that can be set variable or stable) and an integer called “referralCode”, a program consisting of a 20% fee-share.
+
+- Unlike ProtoAave, the Aave borrow function can be called only on active, unfreezed and enabled for borrows reserves: these checks are made mostly thanks to modifiers.
+
+- In Aave borrow function, the available liquidity of the reserve is calculated by the ["Core"](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolCore.sol#L594) contract, and it represents the amount of ERC20 tokens owned by the Lending Pool or the amount of ETHs. In ProtoAave, this liquidity represents only the amount of ERC20 tokens (thanks to “balanceOf” method of ERC20 contract), because our implementation does not allow borrowing ETHs.
+
+- In Aave, both users’ data and the collateral needed to cover a borrow position are computed by the [“Data Provider”](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPoolDataProvider.sol) contract, while the [“Fee Provider”](https://github.com/aave/aave-protocol/blob/master/contracts/fees/FeeProvider.sol) contract provides fee calculus. In this work, these computations are made by the "Lending Pool" contract, using the same formulas proposed in Aave but with different data structures.
+
+- The last difference regards an additional [portion of code](https://github.com/aave/aave-protocol/blob/master/contracts/lendingpool/LendingPool.sol#L469), in Aave, executed when the _msg.sender_ wants to borrow at a stable rate. This part of code checks if the reserve is enabled for stable borrows, if msg.sender is allowed to borrow a stable rate, and the maximum amount _msg.sender_ can borrow at a stable rate, that is 25% of the reserve’s available liquidity.
+
+#### 6.2.2 Differences between deposit functions
+First difference regards input parameters. Both functions accept the address of the reserve and an integer value representing the amount to deposit. The Aave deposit function takes another parameter called referral code (the same parameter indicated in 4.2.1), while the function proposed in ProtoAave takes a different parameter: a boolean indicating if _msg.sender_ wants his deposit in the reserve as collateral. 
+
+In both implementations, after depositing, an number of aTokens are minted for the _msg.sender_. These tokens keep track of how much a certain user has deposited in the reserve. In Aave, aTokens are managed by a smart contract called ["AToken"](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol), while in ProtoAave these tokens are stored in a double mapping called "aTokens" having type (address=>address=>uint256).
+
+- In the Aave, when the _msg.sender_ deposits in a reserve for the first time, the Lending Pool considers this deposit as collateral. On the contrary, in ProtoAave the _msg.sender_ must indicate if wants to use the reserve as collateral or not, storing that in a particular data structure.
+
+- In ProtoAave, before the Lending Pool transfers the amount of tokens from the _msg.sender_ to its address, it checks (thanks to "allowance" method of ERC20) if _msg.sender_ has allowed this transfer. In Aave this check is not executed.
+
+#### 6.2.3 Differences between repay functions
+The main difference between the repay function proposed in this work and the original implementation in Aave, is that in the proposed implementation it is possible only repay completely the debt, while in Aave the msg.sender can repay also only a part of it. 
+In both implementations, the caller (msg.sender) can repay the debt of another user specifying the address, or the own debt specifying his address.
+
+#### 6.2.4 Differences between redeem functions
+The main difference between the function proposed in this implementation and the original implementation of Aave is that in this implementation it is possible only to redeem all own tokens from a reserve, while in Aave it is possible to specify the exact amount to redeem (by passing to the function an additional parameter to the [redeem function](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L218)). In Aave, this function must be called on the ["ATokens.sol"](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol) contract (the contract handling the asset to redeem), while in ProtoAave the redeem function must be called on the LendingPool contract.
+
+Another difference is that in Aave, when the redeem action is execute, is possible to redirect the accrued interests on aTokens towards a particular address by calling [this fuction](https://github.com/aave/aave-protocol/blob/master/contracts/tokenization/AToken.sol#L179), while in this implementation the accrued interests are cumulated in the owner user of aTokens.
+
+#### 4.6.5 Differences between liquidation functions
+There are two main difference between the liquidation function of Aave and that proposed in this implementation. 
+
+The first difference is that in Aave the liquidator decides how to receive the collateral liquidated: he can receive directly the assets (tokens ERC20) or he can receive the amount of "aTokens", by setting an additional boolean parameter, called "receiveATokens" to the liquidation function. In this implementation, it is possible to repay the liquidator only transfer directly him the asset by calling the transfer method of the ERC20 contract, without receiving the Tokens.
+
+The second difference is that in Aave it is possible to specify - for each reserve - the liquidation bonus for the liquidator, while in the proposed implementation, the liquidation bonus is a constant set to 5% of the amount of collateral to liquidate.
+
 
 
 ## 7. Conclusions
