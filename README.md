@@ -25,6 +25,19 @@ When a loan is completely repaid by the borrower (amount to borrow + interests),
 - when the reserve is underused (i.e. a lot of liquidity is available) interest rate for borrowers decreases because LP wants to incentivize users to borrow, and interests for lenders decrease to disincentivize depositing;
 - when the reserve is overused (i.e. liquidity is scarce) interest rate for borrowers increases, and lenders are incentivized to deposit assets by high-interest rate in order to provide more liquidity.
 
+**_Loan to value_** The loan to value (LTV) is a parameter, tipically expressed in percentage, indicating the maximum amount of crypto-asset that a user can borrow with a certain amount of collateral. 
+
+**_Liquidation threshold_** The liquidation threshold (LT) is a parameter, tipically expressed in percentage, under which a loan is considered undercollateralized and so eligible for liquidation.
+
+**_Optimal utilization rate_** The optimal utilization rate defines the optimal usage of a reserve, tipically expressed in percentage. A reserve is considered overused when the its utilization rate is above this parameter, underused when under it.
+
+**_Health factor liquidation threshold_** This parameter indicates the health factor threshold under which a user is eligible for liquidation (i.e. his collateral does not cover properly his debt).
+
+**_Liquidation bonus_** It is the bonus, expressed in percentage, that belongs to the liquidator that repays a part of a user's debt.
+
+**_Origination fee_** It is a fixed amount, expressed in percentage, that is applied instantly to every loan.
+
+
 **_Tokens_** Tokens play a central role in DeFi and in Lending Pools. A token is a crypto-asset having value and living in a blockchain. Tokens can be minted, transferred, and exchanged both in Decentralized Exchanges (DEX) and in other contracts handling them. LPs can handle tokens, they sometimes are minted in order to keep track of users’ actions or to redeem them.
 
 ## 3. Tools used
