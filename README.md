@@ -7,6 +7,17 @@ LPs are “virtual places” where users can deposit and borrow (paying interest
 
 Although Aave provides a wide range of features, the goal of this work is to present a minimal implementation of Aave that summarizes and focuses on the main functions of Aave (deposit, borrow, redeem, repay and liquidation) highlining when they can be executed and how they modify the state of the lending pool and the users’ balances.
 
+### Summary
+This work consists in seven sections:
+- [This section](#1-introduction), the introduction
+- In [Section 2](#2-background), the Backgroung, we present a set of definitions and concepts about decentized finance, lending pools, in order to better understand the subject
+- In [Section 3](#3.tools-used), we present the tools used and the contracts developed 
+- In [Section 4](#4-main-features-of-this-work), we present our minimal prototype of Aave, called ProtoAave, discussing in detail its main functions and features
+- In [Section 5](#5-evaluation), we evaluate ProtoAave providing a set of tests for the main features, and some tests for an execution of a lending pool's track
+- In [Section 6](#6-differences-between-aave-and-protoaave), we first discuss the main general differences between Aave and our implementation, then we focus in detail on specific technical differences between the implementations
+- In [Section 7](#7-conclusions), we present our conclusions 
+
+
 ## 2. Background
 This section provides an overview of Decentralized Finance, Lending Pools, their functionalities, and their assets.
 
@@ -633,7 +644,7 @@ Alice minted tokens: 0
 
 ```
 
-## 6. Differences between this work and the original implementation
+## 6. Differences between Aave and ProtoAave
 Although ProtoAave implements the main features of Aave, it contains some changes that do not prejudice the meaning of Aave protocol. 
 
 In the first part of this section we will see the main differences between ProtoAave and Aave, while in the second part the detailed differences between all functions.
