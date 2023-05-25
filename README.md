@@ -1,7 +1,7 @@
 # A minimal implementation of Aave
 
 ## 1. Introduction and goal
-[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. Its market capitalization, given by the product between the number of tokens and the price, reached 7.58 billion dollars in May 2021, and from May 2022 it seems to be stable at around 1 billion dollars. 
+[Aave](https://github.com/aave/aave-protocol) is a protocol of Decentralized Finance (DeFi), deployed in the Ethereum blockchain in 2020 and based on the Lending Pool (LP) concept. According [CoinMarketCap](https://coinmarketcap.com/currencies/aave/) its market capitalization, given by the product between the number of tokens and the price, reached 7.58 billion dollars in May 2021, and from May 2022 it seems to be stable at around 1 billion dollars. 
 
 LPs are “virtual places” where users can deposit and borrow (paying interests) different assets sending specific transactions to a smart contract that handles them. In general, the “deposit action” has no particular constraints while the “borrow action” is subject to some requirements: the most important is that the borrower must deposit a certain amount of collateral to cover his borrowing. In addition to these actions, Aave provides to users repayment, redeem and liquidation functionalities. Another Aave's features is the implementation of flash loans: they are loans where collateral is not used because the amount of value borrowed must be returned in the same transaction.
 
@@ -9,9 +9,9 @@ Although Aave provides a wide range of features, the goal of this work is to pre
 
 ### Summary
 This work consists in seven sections:
-- [This section](#1-introduction), the introduction
+- [This section](#1-introduction-and-goal), the introduction
 - In [Section 2](#2-background), the Backgroung, we present a set of definitions and concepts about decentized finance, lending pools, in order to better understand the subject
-- In [Section 3](#3.tools-used), we present the tools used and the contracts developed 
+- In [Section 3](#3-tools-used), we present the tools used and the contracts developed 
 - In [Section 4](#4-main-features-of-this-work), we present our minimal prototype of Aave, called ProtoAave, discussing in detail its main functions and features
 - In [Section 5](#5-evaluation), we evaluate ProtoAave providing a set of tests for the main features, and some tests for an execution of a lending pool's track
 - In [Section 6](#6-differences-between-aave-and-protoaave), we first discuss the main general differences between Aave and our implementation, then we focus in detail on specific technical differences between the implementations
@@ -19,8 +19,9 @@ This work consists in seven sections:
 
 
 ## 2. Background
-This section provides an overview of Decentralized Finance, Lending Pools, their functionalities, and their assets.
+This section provides an overview of Decentralized Finance, Lending Pools, their functionalities, their assets and some technical definitions useful for a basic comprehension of Aave and this work.
 
+### Key concepts 
 **_Decentralized Finance_** DeFi is a financial system based and living on blockchain technology. In DeFi, contrary to classical finance, all actions are performed by users - that have direct and total control of their resources - without of need for any trusted central authority.
 
 **_Lending Pools and functionalities_**  In DeFi, a LP can be considered a smart contract towards which users can send transactions in order to lend and borrow crypto-assets, trusting the contract without a central entity. In general, a LP contains different reserves represented by other smart contracts handling these assets. 
@@ -36,6 +37,7 @@ When a loan is completely repaid by the borrower (amount to borrow + interests),
 - when the reserve is underused (i.e. a lot of liquidity is available) interest rate for borrowers decreases because LP wants to incentivize users to borrow, and interests for lenders decrease to disincentivize depositing;
 - when the reserve is overused (i.e. liquidity is scarce) interest rate for borrowers increases, and lenders are incentivized to deposit assets by high-interest rate in order to provide more liquidity.
 
+### Definitions
 **_Loan to value_** The loan to value (LTV) is a parameter, tipically expressed in percentage, indicating the maximum amount of crypto-asset that a user can borrow with a certain amount of collateral. 
 
 **_Liquidation threshold_** The liquidation threshold (LT) is a parameter, tipically expressed in percentage, under which a loan is considered undercollateralized and so eligible for liquidation.
