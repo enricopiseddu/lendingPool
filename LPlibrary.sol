@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC-BY-4.0
 
-/// @title An high-level implementation of a Lending Pool for ERC20 tokens in DeFi
+/// @title The lending pool library
 /// @author Enrico Piseddu
 
 pragma solidity >=0.7.0 <0.9.0;
@@ -15,7 +15,7 @@ library LPlibrary{
     using WadRayMath for uint256;
     
     struct ReserveData{
-        address adr;
+        address adr; //address of the reserve
         uint256 cumulatedLiquidityIndex;
         uint256 cumulatedVariableBorrowIndex;
         uint256 lastUpdateTimestamp;
@@ -25,22 +25,32 @@ library LPlibrary{
         uint256 currentLiquidityRate;
         uint256 price; //price of 1 token, in ETH
         uint256 decimals; 
-        uint256 baseLtvAsCollateral;
-        uint256 liquidationThreshold;
+        uint256 baseLtvAsCollateral; 
+        uint256 liquidationThreshold; 
     }
 
+    uint256 constant SECONDS_PER_YEAR = 60*60*24*365; //number of seconds per year
+
+    //Utilization constants
     uint256 constant OPTIMAL_UTILIZATION_RATE = 0.8 * 1e27; //express in ray
     uint256 constant EXCESS_UTILIZATION_RATE = 0.2 * 1e27; //express in ray
 
     uint256 public constant LIQUIDATION_BONUS = 5; //express in percentage
 
+    //Parameters for interest calculus
     uint256 constant baseVariableBorrowRate = 1e27;
-    uint256 constant r_slope1 = 8e27;
-    uint256 constant r_slope2 = 200e27;
+    uint256 constant r_slope1 = 8e27; //used when the reserve is under-used
+    uint256 constant r_slope2 = 200e27; //used when the reserve is over-used
 
-    uint256 constant SECONDS_PER_YEAR = 60*60*24*365;
+    
 
-    function updateInterestRatesAndTimestamp(ReserveData storage _self, uint256 _liquidityAdded, uint256 _liquidityTaken) internal{
+    /**
+    * @dev Update the interest rate of a reserve according the taken or added liquidity and update the timestamp 
+    * @param _self the reserve object
+    * @param _liquidityAdded the liquidity added to the reserve (example in a deposit action)
+    * @param _liquidityTaken the liquidity taken from the reserve (example in a borrow action)
+    **/
+    function updateInterestRatesAndTimestamp(ReserveData storage _self, uint256 _liquidityAdded, uint256 _liquidityTaken) public{
         uint256 liquidityAvailable = ERC20(_self.adr).balanceOf(address(this));
         (uint256 newLiquidityRate, uint256 newVariableRate) = calculateInterestRates(liquidityAvailable.add(_liquidityAdded).sub(_liquidityTaken), _self.totalVariableBorrows);
 
@@ -49,13 +59,23 @@ library LPlibrary{
         _self.lastUpdateTimestamp = block.timestamp;
     }
 
+
+    /**
+    * @dev Calculate the interest rates according the new balance of a reserve and its borrows
+    * @param _availableLiquidity the balance of tokens of a reserve owned by the lending pool contract
+    * @param _totalBorrows the total amount of borrowed tokens
+    * @return currentLiquidityRate the new liquidity rate of the reserve
+    * @return currentVariableBorrowRate the new interest rate for the reserve
+    **/
     function calculateInterestRates(uint256 _availableLiquidity, uint256 _totalBorrows) public pure 
                                                                         returns(uint256 currentLiquidityRate, 
                                                                                 uint256 currentVariableBorrowRate){
+                                                                                    
         uint256 utilizationRate = (_totalBorrows == 0 && _availableLiquidity == 0)
             ? 0
             : _totalBorrows.rayDiv(_availableLiquidity.add(_totalBorrows));
 
+        //calculate the variable borrow rate according the utilization of the reserve
         if (utilizationRate > OPTIMAL_UTILIZATION_RATE){
 
             uint256 excessUtilizationRateRatio = utilizationRate
@@ -76,11 +96,20 @@ library LPlibrary{
     }
 
 
+    /**
+    * @dev Calculate the health factor of a user
+    * @param collateralBalanceETH the amount of collateral deposited by the user
+    * @param borrowBalanceETH the total borrows of the user
+    * @param totalFeesETH the total fees of the user
+    * @param liquidationThreshold the liquidation threshold of the user (given by a weighted average of LTs of the reserve
+    *        in which the user has deposited collateral 
+    * @return healthFactor the user's healt factor
+    **/
     function calculateHealthFactorFromBalancesInternal(uint256 collateralBalanceETH,
                                                         uint256 borrowBalanceETH,
                                                         uint256 totalFeesETH,
                                                         uint256 liquidationThreshold
-        ) internal pure returns (uint256) {
+        ) public pure returns (uint256) {
             if (borrowBalanceETH == 0) return 2**256-1; // maximum health factor because of no borrows
 
             return
@@ -89,9 +118,14 @@ library LPlibrary{
                 );
     }
 
-
+    /**
+    * @dev Calculate linear interest accrued in the time
+    * @param _rate the interest rate
+    * @param _lastUpdateTimestamp the last timestamp
+    * @return linearInterest the amount of accrued interest in the time
+    **/
     function calculateLinearInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -103,9 +137,14 @@ library LPlibrary{
         return _rate.rayMul(timeDelta).add(WadRayMath.ray());
     }
 
-
+    /**
+    * @dev Calculate compounded interest in the time
+    * @param _rate the interest rate
+    * @param _lastUpdateTimestamp the last timestamp
+    * @return compoundedInterest the amount of accrued interest in the time
+    **/
     function calculateCompoundedInterest(uint256 _rate, uint256 _lastUpdateTimestamp)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -116,18 +155,26 @@ library LPlibrary{
         return ratePerSecond.add(WadRayMath.ray()).rayPow(timeDifference);
     }
 
-
-    function updateIndexes(ReserveData storage _self) internal{
+    /**
+    * @dev Update the variable borrow rate and the liquidity rate of a reserve
+    * @param _self the reserve object
+    **/
+    function updateIndexes(ReserveData storage _self) public{
         uint256 totalBorrowsReserve = _self.totalVariableBorrows;
         
         uint256 variableBorrowRate;
 
         ERC20 reserve = ERC20(_self.adr);
+
         uint256 totalLiquidity = reserve.balanceOf(address(this));
-        uint256 utilizationRate = (totalLiquidity == 0) ? 0 : (totalBorrowsReserve.wadDiv(totalLiquidity));
+        uint256 utilizationRate = (totalLiquidity == 0) ? 
+                                        0 : 
+                                        (totalBorrowsReserve.wadDiv(totalLiquidity));
 
 
-        variableBorrowRate = (utilizationRate <= OPTIMAL_UTILIZATION_RATE) ? baseVariableBorrowRate.add(utilizationRate.rayDiv(OPTIMAL_UTILIZATION_RATE).rayMul(r_slope1)) :
+        //calculate the variable borrow rate according the utilization rate
+        variableBorrowRate = (utilizationRate <= OPTIMAL_UTILIZATION_RATE) ? 
+                                                            baseVariableBorrowRate.add(utilizationRate.rayDiv(OPTIMAL_UTILIZATION_RATE).rayMul(r_slope1)) :
                                                             baseVariableBorrowRate.add(r_slope1).add(r_slope2.rayMul( utilizationRate.sub(OPTIMAL_UTILIZATION_RATE).rayDiv(EXCESS_UTILIZATION_RATE) ));
 
         _self.variableBorrowRate = variableBorrowRate;
@@ -136,26 +183,32 @@ library LPlibrary{
         
 
         if(totalBorrowsReserve > 0){
-            //update Ci
-            uint256 cumulatedLiquidityInterest = LPlibrary.calculateLinearInterest(currentLiquidityRate, _self.lastUpdateTimestamp);
+            //update cumulated liquidity index
+            uint256 cumulatedLiquidityInterest = calculateLinearInterest(currentLiquidityRate, _self.lastUpdateTimestamp);
 
             _self.cumulatedLiquidityIndex = cumulatedLiquidityInterest.rayMul(_self.cumulatedLiquidityIndex);
 
 
-            //update Bvc
-            uint256 cumulatedVariableBorrowInterest = LPlibrary.calculateCompoundedInterest(variableBorrowRate, _self.lastUpdateTimestamp);
+            //update cumulated variable borrow index
+            uint256 cumulatedVariableBorrowInterest = calculateCompoundedInterest(variableBorrowRate, _self.lastUpdateTimestamp);
 
             _self.cumulatedVariableBorrowIndex = cumulatedVariableBorrowInterest.rayMul(_self.cumulatedVariableBorrowIndex);
         }
     }
 
-
-    function calculateAvaiableCollateralToLiquidate(uint256 _collateralPrice, uint256 _principalPrice, uint256 _purchaseAmount, uint256 _userCollateralBalance) internal pure 
+    /**
+    * @dev Calculate the amout of collateral to liquidate and the amount of principal currency to repay
+    * @param _collateralPrice the collateral asset price
+    * @param _principalPrice the pricipal asset price
+    * @param _purchaseAmount the amount of collateral to buy
+    * @param _userCollateralBalance the amount of collateral available of the user
+    * @return collateralAmount the amount of collateral to send to the liquidator
+    * @return principalNeeded the amount of principal asset that the liquidator must repay
+    **/
+    function calculateAvaiableCollateralToLiquidate(uint256 _collateralPrice, uint256 _principalPrice, uint256 _purchaseAmount, uint256 _userCollateralBalance) public pure 
         returns(uint256 collateralAmount, uint256 principalNeeded){
 
-        //uint256 collateralPrice = reserves[_collateral].price;
-        //uint256 principalPrice = reserves[_principal].price;
-
+        //liquidator can obtain the respective amount of collateral (according the _purchaseAmount) + bonus 5%
         uint256 maxAmountCollateralToLiquidate= (_principalPrice
                     .mul(_purchaseAmount)
                     .div(_collateralPrice)
@@ -165,8 +218,10 @@ library LPlibrary{
                         _principalPrice
                         .mul(_purchaseAmount)
                         .div(_collateralPrice)
-                    ); //liquidator obtains the respective amount of collateral + bonus 5%
+                    ); 
 
+        // if the user under liquidation has not enough collateral, we recompute
+        // the collateral amount to send to the liquidator and the principal amount needed
         if (maxAmountCollateralToLiquidate > _userCollateralBalance){
             collateralAmount = _userCollateralBalance;
             principalNeeded = _collateralPrice
@@ -182,9 +237,13 @@ library LPlibrary{
 
     }
 
-
-    function getNormalizedIncome(ReserveData storage _self) internal view returns(uint256){
-        return LPlibrary.calculateLinearInterest(_self.currentLiquidityRate, _self.lastUpdateTimestamp).
+    /**
+    * @dev Calculate the normalized income of a reserve
+    * @param _self the reserve object
+    * @return normalizedIncome the normalized income
+    **/
+    function getNormalizedIncome(ReserveData storage _self) public view returns(uint256){
+        return calculateLinearInterest(_self.currentLiquidityRate, _self.lastUpdateTimestamp).
                     rayMul(_self.cumulatedLiquidityIndex);
     }
     
