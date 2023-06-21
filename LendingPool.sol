@@ -567,10 +567,6 @@ contract LendingPool is Ownable{
         (, uint256 compoundedBalance, uint256 interests ) = getUserBorrowBalances(_reserve, _userToRepay);
 
         uint256 fee = users[_userToRepay].fees[_reserve];
-
-        //check if user is not under liquidation
-        ( ,,,,,, uint256 healthFactor) = calculateUserGlobalData(_userToRepay);
-        require(healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD, "");
         
         //check if user has pending borrows in the reserve
         require(compoundedBalance > 0, "");
