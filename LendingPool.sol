@@ -567,47 +567,50 @@ contract LendingPool is Ownable{
         (, uint256 compoundedBalance, uint256 interests ) = getUserBorrowBalances(_reserve, _userToRepay);
 
         uint256 fee = users[_userToRepay].fees[_reserve];
-        
+
         //check if user has pending borrows in the reserve
         require(compoundedBalance > 0, "");
 
-        //only a complete repayment is allowed
-        require(_amountToRepay == compoundedBalance, "");
-        require(tokenToRepay.allowance(msg.sender, address(this)) == compoundedBalance, "");
+        //the amount to repay must be between the fee and the maximum debt of the user
+        require(_amountToRepay <= compoundedBalance && _amountToRepay>=fee, "");
+        require(tokenToRepay.allowance(msg.sender, address(this)) == _amountToRepay, "");
 
+        uint256 amountToRepayMinusFee = _amountToRepay - fee;
         //update state on repay
-        updateStateOnRepay(_reserve, _userToRepay, _amountToRepay, fee, interests);
+        updateStateOnRepayPartial(_reserve, _userToRepay, amountToRepayMinusFee, fee, interests);
 
         //transfer assets to LP reserve
         tokenToRepay.transferFrom(msg.sender, address(this), _amountToRepay);
 
     }
 
+
     /**
-    * @dev Update the state of a reserve in response to a complete repay action
+    * @dev Update the state of a reserve in response to a repay action
     * @param _reserve the reserve address 
     * @param _userToRepay the user repaid
     * @param _amountToRepay the amount repaid
     * @param _fee the fee repaid
     * @param _interests the interest repaid 
     **/
-    function updateStateOnRepay(address _reserve, address _userToRepay, uint256 _amountToRepay, uint256 _fee, uint256 _interests) internal{
+    function updateStateOnRepayPartial(address _reserve, address _userToRepay, uint256 _amountToRepayMinusFee, uint256 _fee, uint256 _interests) internal{
         //update reserve state
         reserves[_reserve].updateIndexes();
-        reserves[_reserve].totalVariableBorrows -= (_amountToRepay - _fee - _interests); //subtract the amount borrowed
-        reserves[_reserve].totalVariableBorrows += (_fee + _interests); //add fee and interests
+        reserves[_reserve].totalVariableBorrows -= (_amountToRepayMinusFee + _fee); //subtract the amount repaid including fee
+        reserves[_reserve].totalVariableBorrows += _interests; //add and interests
 
         //update user state for the reserve: all values are reseted because the repayment is complete
-        users[_userToRepay].numberOfTokensBorrowed[_reserve] = 0;
-        users[_userToRepay].lastVariableBorrowCumulativeIndex[_reserve] = 0;
-        users[_userToRepay].fees[_reserve] = 0;
-        users[_userToRepay].lastUpdateTimestamp[_reserve] = 0;
+        users[_userToRepay].numberOfTokensBorrowed[_reserve] = users[_userToRepay].numberOfTokensBorrowed[_reserve] + _interests - _amountToRepayMinusFee + _fee;
+        users[_userToRepay].lastVariableBorrowCumulativeIndex[_reserve] = reserves[_reserve].cumulatedVariableBorrowIndex;
+        users[_userToRepay].fees[_reserve] -= _fee;
+        users[_userToRepay].lastUpdateTimestamp[_reserve] = block.timestamp;
 
-         //update interest rates and timestamp for the reserve
-        reserves[_reserve].updateInterestRatesAndTimestamp(_amountToRepay, 0);
+        //update interest rates and timestamp for the reserve
+        reserves[_reserve].updateInterestRatesAndTimestamp(_amountToRepayMinusFee + _fee, 0);
     }
 
-
+    
+    
     /**
     * @dev Compute the new balance of aTokens of a user, for a particular reserve
     * @param _user the user address 
